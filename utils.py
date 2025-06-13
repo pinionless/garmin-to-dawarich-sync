@@ -16,6 +16,83 @@ from garminconnect import (
 from garth.exc import GarthHTTPError
 from models import db, DownloadRecord
 import hashlib, base64
+import time # Added for sleep functionality
+
+def scheduled_download_job(app_instance):
+    """Job to be run by the scheduler. Downloads activities from yesterday and then uploads them."""
+    with app_instance.app_context():
+        # --- Download Phase ---
+        try:
+            app_instance.logger.info("Scheduler: Starting scheduled download job.")
+            today     = datetime.datetime.now().date()
+            yesterday = today - datetime.timedelta(days=1)
+            start     = datetime.datetime.combine(yesterday, datetime.time())
+            end       = datetime.datetime.combine(yesterday, datetime.time.max)
+
+            download_count = download_activities(start, end) # download_activities is already in this file
+            app_instance.logger.info(f"Scheduler: Downloaded {download_count} GPX files.")
+        except Exception as e:
+            app_instance.logger.error(f"Scheduler: Error during scheduled download phase: {e}", exc_info=True)
+            # Optionally, decide if you want to proceed to upload phase if download fails
+            # For now, we'll let it proceed to attempt uploading any previously downloaded files.
+
+        # --- Upload Phase ---
+        app_instance.logger.info("Scheduler: Starting scheduled upload job.")
+        uploaded_count = 0
+        failed_count = 0
+        
+        # Retrieve GPX_FILES_DIR from config, defaulting if not set
+        gpx_base_path = '/garmin/activities/'
+
+        # Find all records that haven't been uploaded to Dawarich
+        records_to_upload = DownloadRecord.query.filter(
+            (DownloadRecord.dawarich == False) | (DownloadRecord.dawarich == None)
+        ).order_by(DownloadRecord.id.asc()).all()
+
+        if not records_to_upload:
+            app_instance.logger.info("Scheduler: No new files to upload to Dawarich.")
+            return
+
+        app_instance.logger.info(f"Scheduler: Found {len(records_to_upload)} file(s) to attempt uploading.")
+
+        for record in records_to_upload:
+            filename = record.filename
+            gpx_file_path = os.path.join(gpx_base_path, filename)
+
+            app_instance.logger.info(f"Scheduler: Attempting to upload {filename} (path: {gpx_file_path})")
+
+            if not os.path.exists(gpx_file_path):
+                app_instance.logger.error(f"Scheduler: File {gpx_file_path} not found for record ID {record.id}. Skipping.")
+                # Optionally, mark as failed or handle differently in the DB
+                failed_count +=1
+                continue
+
+            try:
+                success = submit_location_data(gpx_file_path)
+                
+                if success:
+                    record.dawarich = True
+                    db.session.commit()
+                    app_instance.logger.info(f"Scheduler: Successfully uploaded {filename} and updated database record ID {record.id}.")
+                    uploaded_count += 1
+                else:
+                    # This case might be hit if submit_location_data returns False for non-critical issues.
+                    app_instance.logger.warning(f"Scheduler: Upload of {filename} reported non-success by submit_location_data.")
+                    failed_count += 1
+            
+            except Exception as e:
+                db.session.rollback() 
+                app_instance.logger.error(f"Scheduler: Failed to upload {filename}: {e}", exc_info=True)
+                failed_count += 1
+            
+            finally:
+                # Delay before processing the next file, if there are more files
+                if record != records_to_upload[-1]: # Check if it's not the last record
+                    app_instance.logger.info(f"Scheduler: Waiting 5 seconds before next upload...")
+                    time.sleep(5)
+        
+        app_instance.logger.info(f"Scheduler: Upload job finished. Successfully uploaded: {uploaded_count}, Failed/Skipped: {failed_count}.")
+
 
 def init_garmin():
     ts = '/garmin/.garminconnect'

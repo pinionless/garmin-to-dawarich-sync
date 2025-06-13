@@ -7,6 +7,9 @@ from flask import Flask, jsonify
 from models import db
 from werkzeug.exceptions import BadRequest
 import index
+import datetime # Added for date calculations
+from apscheduler.schedulers.background import BackgroundScheduler # Added for scheduling
+from utils import download_activities, scheduled_download_job # Import scheduled_download_job
 
 # --------------------------------------------------------
 # - Application Version
@@ -49,6 +52,24 @@ def create_app():
     
     # == Database Initialization ============================================
     db.init_app(app)  # Initialize SQLAlchemy with the Flask app
+
+    # == Initialize Scheduler ===============================================
+    # Note: In a production environment with multiple workers (e.g., Gunicorn),
+    # ensure the scheduler is initialized and run by only one worker/process
+    # to avoid duplicate job executions.
+    # For Flask's dev server with reloader, this check helps prevent duplicates.
+    if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        scheduler = BackgroundScheduler(daemon=True)
+        # Schedule the job to run daily at 3:00 AM
+        scheduler.add_job(
+            func=scheduled_download_job, # Now uses the imported function
+            args=[app], # Pass the app instance to the job
+            trigger='cron',
+            hour=3,
+            minute=0
+        )
+        scheduler.start()
+        app.logger.info("Scheduler started. Daily download job scheduled for 3:00 AM.")
 
     # == Ensure all tables exist and perform schema checks inside context ==
     with app.app_context():

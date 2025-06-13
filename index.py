@@ -6,6 +6,7 @@ import datetime
 from models import DownloadRecord, db
 from utils import download_activities, submit_location_data
 import os
+import time # Added for sleep functionality
 
 index_bp = Blueprint('index', __name__)
 
@@ -38,41 +39,70 @@ def check():
 
 @index_bp.route('/upload')
 def upload():
-    record_to_upload = DownloadRecord.query.filter(
+    # Retrieve GPX_FILES_DIR from config, defaulting if not set
+    gpx_base_path = current_app.config.get('GPX_FILES_DIR', '/garmin/activities/')
+    
+    records_to_upload = DownloadRecord.query.filter(
         (DownloadRecord.dawarich == False) | (DownloadRecord.dawarich == None)
-    ).order_by(DownloadRecord.id.desc()).first()
+    ).order_by(DownloadRecord.id.asc()).all() # Process oldest first
 
-    if not record_to_upload:
+    if not records_to_upload:
         flash("No new files to upload to Dawarich.", "info")
         return redirect(url_for('index.index'))
 
-    filename = record_to_upload.filename
-    gpx_file_path = os.path.join("/garmin/activities/", filename) 
+    current_app.logger.info(f"/upload: Found {len(records_to_upload)} file(s) to attempt uploading.")
+    
+    uploaded_count = 0
+    failed_count = 0
+    processed_files_details = [] # To store details for flashing
 
-    current_app.logger.info(f"/upload: Attempting to upload {filename} (path: {gpx_file_path})")
+    for i, record in enumerate(records_to_upload):
+        filename = record.filename
+        gpx_file_path = os.path.join(gpx_base_path, filename) 
 
-    if not os.path.exists(gpx_file_path):
-        current_app.logger.error(f"/upload: File {gpx_file_path} not found for record ID {record_to_upload.id}.")
-        flash(f"File {filename} not found. Skipping upload.", "error")
-        return redirect(url_for('index.index'))
+        current_app.logger.info(f"/upload: Attempting to upload {filename} (path: {gpx_file_path})")
 
-    try:
-        success = submit_location_data(gpx_file_path)
-        
-        if success:
-            record_to_upload.dawarich = True
-            db.session.commit()
-            current_app.logger.info(f"/upload: Successfully uploaded {filename} and updated database record ID {record_to_upload.id}.")
-            flash(f"Successfully uploaded {filename} to Dawarich.", "success")
-        else:
-            current_app.logger.warning(f"/upload: Upload of {filename} reported non-success by submit_location_data.")
-            flash(f"Upload of {filename} to Dawarich completed but reported non-success.", "warning")
+        if not os.path.exists(gpx_file_path):
+            current_app.logger.error(f"/upload: File {gpx_file_path} not found for record ID {record.id}. Skipping.")
+            processed_files_details.append(f"File {filename} not found (Skipped).")
+            failed_count += 1
+            continue
+
+        try:
+            success = submit_location_data(gpx_file_path)
             
-    except Exception as e:
-        db.session.rollback() 
-        current_app.logger.error(f"/upload: Failed to upload {filename}: {e}", exc_info=True)
-        flash(f"Error uploading {filename} to Dawarich: {e}", "error")
+            if success:
+                record.dawarich = True
+                db.session.commit()
+                current_app.logger.info(f"/upload: Successfully uploaded {filename} and updated database record ID {record.id}.")
+                processed_files_details.append(f"Successfully uploaded {filename}.")
+                uploaded_count += 1
+            else:
+                current_app.logger.warning(f"/upload: Upload of {filename} reported non-success by submit_location_data.")
+                processed_files_details.append(f"Upload of {filename} reported non-success.")
+                failed_count += 1
+                
+        except Exception as e:
+            db.session.rollback() 
+            current_app.logger.error(f"/upload: Failed to upload {filename}: {e}", exc_info=True)
+            processed_files_details.append(f"Error uploading {filename}: {str(e)[:100]}...") # Keep error message brief for flash
+            failed_count += 1
         
+        # Delay before processing the next file, if it's not the last one
+        if i < len(records_to_upload) - 1:
+            current_app.logger.info(f"/upload: Waiting 5 seconds before next upload...")
+            time.sleep(5)
+            
+    # Flash a summary message
+    if uploaded_count > 0 and failed_count == 0:
+        flash(f"Successfully uploaded {uploaded_count} file(s).", "success")
+    elif uploaded_count > 0 and failed_count > 0:
+        flash(f"Upload process completed. Successfully uploaded: {uploaded_count}, Failed/Skipped: {failed_count}. Check logs for details.", "warning")
+    elif failed_count > 0 and uploaded_count == 0:
+        flash(f"Upload process failed for all {failed_count} file(s). Check logs for details.", "error")
+    # If processed_files_details is long, consider not flashing all details or logging them instead.
+    # For now, we'll just flash the summary counts.
+
     return redirect(url_for('index.index'))
 
 
