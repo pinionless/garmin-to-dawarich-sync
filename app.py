@@ -47,7 +47,19 @@ def create_app():
     DB_NAME = os.environ.get('POSTGRES_DB') # PostgreSQL database name
     DB_HOST = os.environ.get('POSTGRES_HOST', 'db') # PostgreSQL host
 
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:5432/{DB_NAME}' # SQLAlchemy database URI
+    # Check if PostgreSQL environment variables are set
+    if DB_USER and DB_PASSWORD and DB_NAME:
+        # Use PostgreSQL
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:5432/{DB_NAME}'
+        app.logger.info("Using PostgreSQL database.")
+    else:
+
+        litefs_db_path = os.environ.get('LITEFS_DB_PATH', '/garmin/litefs.db')
+        # Ensure the directory for the SQLite database exists
+        os.makedirs(os.path.dirname(litefs_db_path), exist_ok=True)
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{litefs_db_path}'
+        app.logger.info(f"PostgreSQL environment variables not fully set. Using LiteFS (SQLite) at {litefs_db_path}.")
+
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # Disable SQLAlchemy event system
     
     # == Database Initialization ============================================
