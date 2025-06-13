@@ -92,6 +92,7 @@ Please support [`Dawarich`](https://github.com/Freika/dawarich)
 6. Dawarich version verification
 7. Reupload Old Files
 8. Delete old gpx files
+9. Dawarich connection check
 
 ## Example Docker Compose file
 ```
