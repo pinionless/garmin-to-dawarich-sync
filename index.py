@@ -24,7 +24,7 @@ def check():
     today     = datetime.datetime.now().date()
     yesterday = today - datetime.timedelta(days=1)
     start     = datetime.datetime.combine(yesterday, datetime.time())
-    end       = datetime.datetime.combine(yesterday, datetime.time.max)
+    end       = datetime.datetime.now()
 
     try:
         count = download_activities(start, end)

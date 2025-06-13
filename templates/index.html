@@ -7,6 +7,10 @@
 <div class="container">
     <h2>Welcome to Garmin to Dawarich Sync</h2>
     <p>This application syncs location data from Garmin to Dawarich.</p>
+    <p>
+        <a href="{{ url_for('index.check') }}" class="btn btn-primary">Check for New Activities (Yesterday till Now)</a>
+        <a href="{{ url_for('index.upload') }}" class="btn btn-secondary">Upload Pending Files to Dawarich</a>
+    </p>
 </div>
 
 <div class="container">
