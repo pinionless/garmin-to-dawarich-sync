@@ -1,13 +1,13 @@
 # Garmin to Dawarich Location Sync
 
-Version: 0.11
+v0.11
 
 This application automates the process of downloading GPX activity files from Garmin Connect and uploading them to a Dawarich instance.
 
 ## Tested Dawarich
 **Works with Dawarich 0.28.1**
-- Updates to Dawarich APP might brake the upload(import) process.
-- Check here tested, working version before upgradeing Dawarich to new version.
+- Updates to Dawarich APP might break the upload(import) process.
+- Check here tested, working version before upgrading Dawarich to new version.
 
 ## Support
 ##### Here is a link in case you want to leave a tip.
@@ -36,7 +36,7 @@ This application automates the process of downloading GPX activity files from Ga
 environment:
     # Flask settings
     FLASK_SECRET_KEY=your_very_secret_flask_key_here
-    FLASK_ENV=development # its still eary beta
+    FLASK_ENV=development # its still early beta
 
     # Garmin Connect Credentials
     GARMIN_EMAIL=your_garmin_email@example.com
@@ -67,9 +67,9 @@ Exclude activities without location data using ENV EXCLUDE
 - The website has no CSS file. (See To Do)
 - GPX files are never deleted from mounted folder
 
-## Database
+## Database (*)
 - Should set up LiteFS if POSTGRES ENV are not set (not tested yet)
-- You can use same postgres container you set up for dawarich. But app requires that you create new database ("your_db_name") within that container (for example useing PGAdmin).
+- You can use same postgres container you set up for dawarich. But app requires that you create new database ("your_db_name") within that container (for example using PGAdmin).
 
 ## python-garminconnect
 This project uses [`python-garminconnect`](https://github.com/cyberjunky/python-garminconnect) to connect and interact with Garmin Connect services.
@@ -80,8 +80,8 @@ Please support [`Dawarich`](https://github.com/Freika/dawarich)
 ## Usage
 *   Will run at 3:00 every night.
 *   Navigate to `http://localhost:5000/` to view the main page.
-*   `/check`: Triggers a download of activities since yesterday untill now()
-*   `/upload`: Attempts to upload all unprocessed GPX file to Dawarich.
+*   `/check`: Triggers a download of activities since yesterday until now()
+*   `/upload`: Attempts to upload all unprocessed GPX files to Dawarich.
 
 ## To Do
 1. CSS Styles
