@@ -1,0 +1,43 @@
+<!-- ======================================================== -->
+<!-- = index.html -->
+<!-- ======================================================== -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2>Welcome to Garmin to Dawarich Sync</h2>
+    <p>This application syncs location data from Garmin to Dawarich.</p>
+</div>
+
+<div class="container">
+    <h3>Download Records</h3>
+    {% if records %}
+    <table class="table">
+        <thead>
+            <tr><th>ID</th><th>Time</th><th>Filename</th><th>Dawarich</th></tr>
+        </thead>
+        <tbody>
+            {% for rec in records %}
+            <tr>
+                <td>{{ rec.id }}</td>
+                <td>{{ rec.download_time }}</td>
+                <td>{{ rec.filename }}</td>
+                <td>{{ "Yes" if rec.dawarich else "No" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <nav>
+        {% if pagination.has_prev %}
+            <a href="{{ url_for('index.index', page=pagination.prev_num) }}">Previous</a>
+        {% endif %}
+        <span>Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        {% if pagination.has_next %}
+            <a href="{{ url_for('index.index', page=pagination.next_num) }}">Next</a>
+        {% endif %}
+    </nav>
+    {% else %}
+        <p>No download records found.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+# ========================================================
+# = .gitignore - Specifies intentionally untracked files for Git
+# ========================================================
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+.venv/
+venv/
+pip-log.txt
+pip-delete-this-directory/
+.tox/
+.nox/
+.idea/
+.vscode/
+.git
+json_backup/*
+
+# Coverage reports
+.coverage
+htmlcov/
+
+# Flask
+instance/ # For Flask instance folder, might contain sqlite DB or configs
+.flaskenv # For local environment variables
+flask_app.log # Example log file
+
+# Docker
+*.env # If you use separate .env files for secrets
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Any other files that might be generated or contain sensitive info
+*.sqlite3

@@ -1,0 +1,10 @@
+Flask
+psycopg2-binary
+Flask-SQLAlchemy
+Flask-Migrate
+python-dotenv
+requests
+Werkzeug
+gunicorn
+git+https://github.com/cyberjunky/python-garminconnect.git
+bs4
