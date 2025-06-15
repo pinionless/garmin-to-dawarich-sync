@@ -14,9 +14,9 @@ from utils import download_activities, scheduled_download_job # Import scheduled
 # --------------------------------------------------------
 # - Application Version
 #---------------------------------------------------------
-__version__ = "0.10" # Current application version
+__version__ = "0.12" # Current application version
 APP_TITLE = "Garmin to Dawarich Location Sync"
-TARGET_DB_SCHEMA_VERSION = "0.10"
+TARGET_DB_SCHEMA_VERSION = "0.12"
 
 # --------------------------------------------------------
 # - Application Factory Function

@@ -1,6 +1,6 @@
 # Garmin to Dawarich Location Sync
 
-v0.11
+v0.12
 
 This application automates the process of downloading GPX activity files from Garmin Connect and uploading them to a Dawarich instance.
 
