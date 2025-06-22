@@ -90,7 +90,7 @@ Please support [`Dawarich`](https://github.com/Freika/dawarich)
 4. Customize time and date of automatic checks
 5. Customizable manual checks
 6. Dawarich version verification
-7. Reupload Old Files
+7. Reupload Old Files - ready, not tested
 8. Delete old gpx files
 9. Dawarich connection check
 
