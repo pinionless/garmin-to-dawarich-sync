@@ -34,6 +34,7 @@ def settings():
         return redirect(url_for('index.index'))
 
     settings.delete_old_gpx = 'delete_old_gpx' in request.form
+    settings.ignore_safe_dawarich_versions = 'ignore_safe_dawarich_versions' in request.form
 
     start_date_str = request.form.get('manual_check_start_date')
     if start_date_str:

@@ -34,7 +34,8 @@ def create_app():
     app.config['DAWARICH_EMAIL'] = os.environ.get('DAWARICH_EMAIL')
     app.config['DAWARICH_PASSWORD'] = os.environ.get('DAWARICH_PASSWORD')
     app.config['DAWARICH_HOST'] = os.environ.get('DAWARICH_HOST')
-    app.config['_DAWARICH_CONNECTION_STATUS'] = {'status': None, 'timestamp': None, 'message': ''}
+    app.config['_DAWARICH_CONNECTION_STATUS'] = {'status': None, 'timestamp': None, 'message': '', 'version': None}
+    app.config['SAFE_VERSIONS'] = ['0.28.1']
 
     raw = os.environ.get('EXCLUDE', '[]')
     try:

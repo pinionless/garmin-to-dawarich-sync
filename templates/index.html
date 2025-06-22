@@ -84,6 +84,10 @@
             <label for="manual_check_delaynot">Manual Check Delay (days):</label>
             <input type="number" id="manual_check_delaynot" name="manual_check_delaynot" value="{{ settings.manual_check_delaynot if settings.manual_check_delaynot is not none else '' }}">
         </div>
+        <div class="form-group">
+            <label for="ignore_safe_dawarich_versions">Ignore Dawarich safe versions check:</label>
+            <input type="checkbox" id="ignore_safe_dawarich_versions" name="ignore_safe_dawarich_versions" value="true" {% if settings.ignore_safe_dawarich_versions %}checked{% endif %}>
+        </div>
         <button type="submit" class="btn btn-primary">Save Settings</button>
     </form>
 </div>

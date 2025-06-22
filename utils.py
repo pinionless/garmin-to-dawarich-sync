@@ -14,7 +14,7 @@ from garminconnect import (
     GarminConnectTooManyRequestsError,
 )
 from garth.exc import GarthHTTPError
-from models import db, DownloadRecord
+from models import db, DownloadRecord, UserSettings
 import hashlib, base64
 import time # Added for sleep functionality
 
@@ -26,7 +26,7 @@ def check_dawarich_connection(force_check=False):
     status_cache = current_app.config['_DAWARICH_CONNECTION_STATUS']
     # Use cached status if available and not forced, and younger than 5 minutes
     if not force_check and status_cache.get('timestamp'):
-        if (time.time() - status_cache['timestamp']) < 300: # 5 minutes
+        if (time.time() - status_cache['timestamp']) < 900: # 5 minutes
             if not status_cache['status']:
                 flash(status_cache['message'], 'error')
             return status_cache['status']
@@ -39,7 +39,7 @@ def check_dawarich_connection(force_check=False):
         msg = "Dawarich connection failed: Host, email, or password not configured."
         current_app.logger.error(msg)
         flash(msg, 'error')
-        status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg})
+        status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
         return False
 
     login_url = f'{host}/users/sign_in'
@@ -65,27 +65,55 @@ def check_dawarich_connection(force_check=False):
         if "Invalid Email or password." in resp.text:
             raise ValueError("Invalid Dawarich credentials.")
 
-        current_app.logger.info("Dawarich connection check successful.")
-        status_cache.update({'status': True, 'timestamp': time.time(), 'message': ''})
+        # --- Find Dawarich Version ---
+        soup_dashboard = BeautifulSoup(resp.text, 'html.parser')
+        version_link = soup_dashboard.find('a', href="https://github.com/Freika/dawarich/releases/latest")
+        dawarich_version = None
+        if version_link:
+            version_span = version_link.find('span')
+            if version_span:
+                dawarich_version = version_span.text.strip()
+
+        settings = UserSettings.query.first()
+        if settings and settings.ignore_safe_dawarich_versions:
+            current_app.logger.warning("Dawarich safe version check is being ignored by user setting.")
+        else:
+            safe_versions = current_app.config.get('SAFE_VERSIONS', [])
+            if not dawarich_version:
+                msg = "Could not determine Dawarich version. Aborting as a precaution."
+                current_app.logger.error(msg)
+                flash(msg, 'error')
+                status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
+                return False
+
+            if dawarich_version not in safe_versions:
+                msg = f"Dawarich version {dawarich_version} is not in the list of safe versions: {safe_versions}"
+                current_app.logger.error(msg)
+                flash(msg, 'error')
+                status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': dawarich_version})
+                return False
+
+        current_app.logger.info(f"Dawarich connection check successful. Version: {dawarich_version}")
+        status_cache.update({'status': True, 'timestamp': time.time(), 'message': '', 'version': dawarich_version})
         return True
 
     except requests.exceptions.RequestException as e:
         msg = f"Dawarich connection failed: Network error - {e}"
         current_app.logger.error(msg)
         flash(msg, 'error')
-        status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg})
+        status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
         return False
     except ValueError as e:
         msg = f"Dawarich connection failed: {e}"
         current_app.logger.error(msg)
         flash(msg, 'error')
-        status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg})
+        status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
         return False
     except Exception as e:
         msg = f"Dawarich connection failed: An unexpected error occurred - {e}"
         current_app.logger.error(msg, exc_info=True)
         flash(msg, 'error')
-        status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg})
+        status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
         return False
 
 def scheduled_download_job(app_instance):
@@ -241,21 +269,17 @@ def submit_location_data(gpx_path: str, source: str = "gpx") -> bool:
     4) Upload the actual GPX file
     5) Submit the import form with the signed_id of the uploaded blob
     """
+    if not check_dawarich_connection():
+        current_app.logger.error("submit_location_data: Aborting due to failed Dawarich connection check.")
+        return False
+
     current_app.logger.info(f"submit_location_data: Starting import for {gpx_path}, source={source}")
     # -- 1) LOGIN ---------------------------------------------------------
     host  = current_app.config.get('DAWARICH_HOST')
-    if not host:
-        current_app.logger.error("submit_location_data: DAWARICH_HOST not configured.")
-        raise ValueError("DAWARICH_HOST not configured.")
-
     login_url =f'{host}/users/sign_in'
 
     user = current_app.config.get('DAWARICH_EMAIL') 
     pwd  = current_app.config.get('DAWARICH_PASSWORD')
-
-    if not user or not pwd:
-        current_app.logger.error("submit_location_data: Step 1: DAWARICH_EMAIL or DAWARICH_PASSWORD not configured.")
-        raise ValueError("DAWARICH_EMAIL or DAWARICH_PASSWORD not configured.")
 
     sess = requests.Session()
     # first GET login page to retrieve CSRF token

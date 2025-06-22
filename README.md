@@ -93,7 +93,7 @@ Please support [`Dawarich`](https://github.com/Freika/dawarich)
 7. Reupload Old Files - ready, not tested
 8. Delete old gpx files - ready, tested
 9. Delete old database records - ready, tested
-10. Dawarich connection check
+10. Dawarich connection check - ready, not tested fully
 
 ## Example Docker Compose file
 ```

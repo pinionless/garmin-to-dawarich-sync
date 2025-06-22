@@ -31,3 +31,4 @@ class UserSettings(db.Model):
     manual_check_start_date = db.Column(db.Date, nullable=True)
     manual_check_end_date   = db.Column(db.Date, nullable=True)
     manual_check_delay   = db.Column(db.Integer, nullable=True)
+    ignore_safe_dawarich_versions = db.Column(db.Boolean, nullable=False, default=False)
