@@ -1,13 +1,11 @@
 # Garmin to Dawarich Location Sync
 
-v0.12
-
 This application automates the process of downloading GPX activity files from Garmin Connect and uploading them to a Dawarich instance.
 
 ## Tested Dawarich
 **Works with Dawarich 0.28.1**
 - Updates to Dawarich APP might break the upload(import) process.
-- Check here tested, working version before upgrading Dawarich to new version.
+- By default the application will work only with tested version of Dawarich. This can be changed in settings.
 
 ## Support
 ##### Here is a link in case you want to leave a tip.
@@ -84,20 +82,15 @@ Please support [`Dawarich`](https://github.com/Freika/dawarich)
 *   `/upload`: Attempts to upload all unprocessed GPX files to Dawarich.
 
 ## To Do
-1. CSS Styles
-# Update function
-2. Check if upload was sucessfull and exists in imports page
-3. Check if location data exists in gpx before upload
-4. Customize time and date of automatic checks
-# New function:
-5. Customizable manual checks
+- Update function
+1. Check if upload was sucessfull and exists in imports page
+2. Check if location data exists in gpx before upload
+3. Customize time and date of automatic checks
+- New function:
+4. Customizable manual checks
+- Update:
+5. Styles
 
-## Ready
-6. Dawarich version verification - ready
-7. Reupload Old Files - ready, not tested
-8. Delete old gpx files - ready, tested
-9. Delete old database records - ready, tested
-10. Dawarich connection check - ready, not tested fully
 
 ## Example Docker Compose file
 ```
