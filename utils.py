@@ -1,7 +1,7 @@
 # ========================================================
 # = utils.py - Utility functions and context processors
 # ========================================================
-from flask import current_app
+from flask import current_app, flash
 import os
 import datetime
 import mimetypes
@@ -17,6 +17,76 @@ from garth.exc import GarthHTTPError
 from models import db, DownloadRecord
 import hashlib, base64
 import time # Added for sleep functionality
+
+def check_dawarich_connection(force_check=False):
+    """
+    Checks connection and login to Dawarich. Caches the result for 5 minutes.
+    Flashes an error message on failure.
+    """
+    status_cache = current_app.config['_DAWARICH_CONNECTION_STATUS']
+    # Use cached status if available and not forced, and younger than 5 minutes
+    if not force_check and status_cache.get('timestamp'):
+        if (time.time() - status_cache['timestamp']) < 300: # 5 minutes
+            if not status_cache['status']:
+                flash(status_cache['message'], 'error')
+            return status_cache['status']
+
+    host = current_app.config.get('DAWARICH_HOST')
+    user = current_app.config.get('DAWARICH_EMAIL')
+    pwd = current_app.config.get('DAWARICH_PASSWORD')
+
+    if not all([host, user, pwd]):
+        msg = "Dawarich connection failed: Host, email, or password not configured."
+        current_app.logger.error(msg)
+        flash(msg, 'error')
+        status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg})
+        return False
+
+    login_url = f'{host}/users/sign_in'
+    sess = requests.Session()
+
+    try:
+        page = sess.get(login_url, timeout=10)
+        page.raise_for_status()
+        soup = BeautifulSoup(page.text, 'html.parser')
+        token_element = soup.find('input', {'name': 'authenticity_token'})
+        if not token_element:
+            raise ValueError("Could not find CSRF token on Dawarich login page.")
+        token = token_element['value']
+
+        data = {
+            'user[email]': user,
+            'user[password]': pwd,
+            'authenticity_token': token
+        }
+        resp = sess.post(login_url, data=data, timeout=10)
+        resp.raise_for_status()
+
+        if "Invalid Email or password." in resp.text:
+            raise ValueError("Invalid Dawarich credentials.")
+
+        current_app.logger.info("Dawarich connection check successful.")
+        status_cache.update({'status': True, 'timestamp': time.time(), 'message': ''})
+        return True
+
+    except requests.exceptions.RequestException as e:
+        msg = f"Dawarich connection failed: Network error - {e}"
+        current_app.logger.error(msg)
+        flash(msg, 'error')
+        status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg})
+        return False
+    except ValueError as e:
+        msg = f"Dawarich connection failed: {e}"
+        current_app.logger.error(msg)
+        flash(msg, 'error')
+        status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg})
+        return False
+    except Exception as e:
+        msg = f"Dawarich connection failed: An unexpected error occurred - {e}"
+        current_app.logger.error(msg, exc_info=True)
+        flash(msg, 'error')
+        status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg})
+        return False
 
 def scheduled_download_job(app_instance):
     """Job to be run by the scheduler. Downloads activities from yesterday and then uploads them."""

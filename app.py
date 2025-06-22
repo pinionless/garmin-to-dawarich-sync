@@ -3,13 +3,13 @@
 # ========================================================
 import os
 import ast
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from models import db, UserSettings
 from werkzeug.exceptions import BadRequest
 import index
 import datetime # Added for date calculations
 from apscheduler.schedulers.background import BackgroundScheduler # Added for scheduling
-from utils import download_activities, scheduled_download_job # Import scheduled_download_job
+from utils import download_activities, scheduled_download_job, check_dawarich_connection
 
 # --------------------------------------------------------
 # - Application Version
@@ -34,6 +34,7 @@ def create_app():
     app.config['DAWARICH_EMAIL'] = os.environ.get('DAWARICH_EMAIL')
     app.config['DAWARICH_PASSWORD'] = os.environ.get('DAWARICH_PASSWORD')
     app.config['DAWARICH_HOST'] = os.environ.get('DAWARICH_HOST')
+    app.config['_DAWARICH_CONNECTION_STATUS'] = {'status': None, 'timestamp': None, 'message': ''}
 
     raw = os.environ.get('EXCLUDE', '[]')
     try:
@@ -94,22 +95,28 @@ def create_app():
             db.session.commit()
             app.logger.info("Created default user settings.")
 
-        # == Inject App Version into Templates ============================================
-        @app.context_processor
-        def inject_version():
-            # Makes app_version available in all templates
-            return dict(app_version=__version__)
+    @app.before_request
+    def before_request_func():
+        # Don't run the check for static files to avoid unnecessary checks
+        if request.endpoint and 'static' not in request.endpoint:
+            check_dawarich_connection()
 
-        # == Register Blueprints for different application modules ============================================
-        # Each blueprint corresponds to a feature or section of the application
-        # Registers routes for index page
-        index.register_routes(app)
+    # == Inject App Version into Templates ============================================
+    @app.context_processor
+    def inject_version():
+        # Makes app_version available in all templates
+        return dict(app_version=__version__)
 
-        # Suppress raw‐bytes logs for protocol‐mismatch 400s (e.g. HTTPS→HTTP)
-        @app.errorhandler(BadRequest)
-        def handle_bad_request(e):
-            app.logger.warning(f"Bad request received: {e.description}")
-            return jsonify(status="error", message="Bad request"), 400
+    # == Register Blueprints for different application modules ============================================
+    # Each blueprint corresponds to a feature or section of the application
+    # Registers routes for index page
+    index.register_routes(app)
+
+    # Suppress raw‐bytes logs for protocol‐mismatch 400s (e.g. HTTPS→HTTP)
+    @app.errorhandler(BadRequest)
+    def handle_bad_request(e):
+        app.logger.warning(f"Bad request received: {e.description}")
+        return jsonify(status="error", message="Bad request"), 400
     return app
 
 # --------------------------------------------------------
