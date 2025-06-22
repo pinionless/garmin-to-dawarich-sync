@@ -85,11 +85,15 @@ Please support [`Dawarich`](https://github.com/Freika/dawarich)
 
 ## To Do
 1. CSS Styles
+# Update function
 2. Check if upload was sucessfull and exists in imports page
 3. Check if location data exists in gpx before upload
 4. Customize time and date of automatic checks
+# New function:
 5. Customizable manual checks
-6. Dawarich version verification
+
+## Ready
+6. Dawarich version verification - ready
 7. Reupload Old Files - ready, not tested
 8. Delete old gpx files - ready, tested
 9. Delete old database records - ready, tested

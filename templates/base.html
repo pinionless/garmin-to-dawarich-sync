@@ -4,11 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Garmin to Dawarich Sync</title>
-    <!-- Add your CSS files here -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
     <header>
-        <h1>Garmin to Dawarich Location Sync</h1>
+        <p>
+            <a href="{{ url_for('index.check') }}" class="btn btn-primary">Check for New Activities (Yesterday untill Now)</a>
+            <a href="{{ url_for('index.upload') }}" class="btn btn-secondary">Upload Pending Files to Dawarich</a>
+        </p>
     </header>
     
     {% include '_flash_messages.html' %}
@@ -18,7 +24,7 @@
     </main>
     
     <footer>
-        <p>Version: {{ app_version }}</p>
+        <p><a href="https://github.com/pinionless/garmin-to-dawarich-sync">Dawarich Location Sync</a> Version: {{ app_version }}</p>
     </footer>
 </body>
 </html>
