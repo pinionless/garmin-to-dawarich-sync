@@ -18,6 +18,12 @@ def index():
         .paginate(page=page, per_page=20)
     records = pagination.items
     settings = UserSettings.query.first()
+
+    gpx_base_path = current_app.config.get('GPX_FILES_DIR', '/garmin/activities/')
+    for rec in records:
+        gpx_file_path = os.path.join(gpx_base_path, rec.filename)
+        rec.file_exists = os.path.exists(gpx_file_path)
+
     return render_template('index.html', records=records, pagination=pagination, settings=settings)
 
 @index_bp.route('/settings', methods=['POST'])
@@ -143,6 +149,41 @@ def upload(record_id=None):
     return redirect(url_for('index.index'))
 
 
+@index_bp.route('/remove_file/<int:record_id>')
+def remove_file(record_id):
+    record = DownloadRecord.query.get_or_404(record_id)
+    gpx_base_path = current_app.config.get('GPX_FILES_DIR', '/garmin/activities/')
+    gpx_file_path = os.path.join(gpx_base_path, record.filename)
+
+    if os.path.exists(gpx_file_path):
+        try:
+            os.remove(gpx_file_path)
+            flash(f"Successfully removed file: {record.filename}", "success")
+            current_app.logger.info(f"Removed file {gpx_file_path} for record ID {record.id}")
+        except OSError as e:
+            flash(f"Error removing file {record.filename}: {e}", "error")
+            current_app.logger.error(f"Error removing file {gpx_file_path}: {e}", exc_info=True)
+    else:
+        flash(f"File not found, could not remove: {record.filename}", "warning")
+        current_app.logger.warning(f"File {gpx_file_path} not found for removal for record ID {record.id}")
+
+    return redirect(url_for('index.index'))
+
+
+@index_bp.route('/remove_record/<int:record_id>')
+def remove_record(record_id):
+    record = DownloadRecord.query.get_or_404(record_id)
+    try:
+        db.session.delete(record)
+        db.session.commit()
+        flash(f"Successfully removed record ID: {record.id}", "success")
+        current_app.logger.info(f"Removed record ID {record.id} from database.")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error removing record ID {record.id}: {e}", "error")
+        current_app.logger.error(f"Error removing record ID {record.id}: {e}", exc_info=True)
+
+    return redirect(url_for('index.index'))
 
 
 def register_routes(app):

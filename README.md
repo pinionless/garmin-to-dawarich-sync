@@ -91,8 +91,9 @@ Please support [`Dawarich`](https://github.com/Freika/dawarich)
 5. Customizable manual checks
 6. Dawarich version verification
 7. Reupload Old Files - ready, not tested
-8. Delete old gpx files
-9. Dawarich connection check
+8. Delete old gpx files - ready, tested
+9. Delete old database records - ready, tested
+10. Dawarich connection check
 
 ## Example Docker Compose file
 ```

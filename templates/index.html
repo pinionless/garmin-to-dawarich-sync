@@ -25,9 +25,29 @@
             <tr>
                 <td>{{ rec.id }}</td>
                 <td>{{ rec.download_time }}</td>
-                <td>{{ rec.filename }}</td>
+                <td>
+                    {% if rec.file_exists %}
+                        {{ rec.filename }}
+                    {% else %}
+                        <s>{{ rec.filename }}</s>
+                    {% endif %}
+                </td>
                 <td>{{ "Yes" if rec.dawarich else "No" }}</td>
-                <td><a href="{{ url_for('index.upload', record_id=rec.id) }}">Upload Again</a></td>
+                <td>
+                    {% if rec.file_exists %}
+                        <a href="{{ url_for('index.upload', record_id=rec.id) }}">Upload Again</a>
+                    {% else %}
+                        <s>Upload Again</s>
+                    {% endif %}
+                     |
+                    {% if rec.file_exists %}
+                        <a href="{{ url_for('index.remove_file', record_id=rec.id) }}" onclick="return confirm('Are you sure you want to delete the file {{ rec.filename }}?');">Remove File</a>
+                    {% else %}
+                        <s>Remove File</s>
+                    {% endif %}
+                     |
+                    <a href="{{ url_for('index.remove_record', record_id=rec.id) }}" onclick="return confirm('Are you sure you want to delete this record (ID: {{ rec.id }})?');">Remove Record</a>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
