@@ -18,7 +18,7 @@
     {% if records %}
     <table class="table">
         <thead>
-            <tr><th>ID</th><th>Time</th><th>Filename</th><th>Dawarich</th></tr>
+            <tr><th>ID</th><th>Time</th><th>Filename</th><th>Dawarich</th><th>Actions</th></tr>
         </thead>
         <tbody>
             {% for rec in records %}
@@ -27,6 +27,7 @@
                 <td>{{ rec.download_time }}</td>
                 <td>{{ rec.filename }}</td>
                 <td>{{ "Yes" if rec.dawarich else "No" }}</td>
+                <td><a href="{{ url_for('index.upload', record_id=rec.id) }}">Upload Again</a></td>
             </tr>
             {% endfor %}
         </tbody>

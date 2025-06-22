@@ -71,13 +71,17 @@ def check():
 
 
 @index_bp.route('/upload')
-def upload():
+@index_bp.route('/upload/<int:record_id>')
+def upload(record_id=None):
     # Retrieve GPX_FILES_DIR from config, defaulting if not set
     gpx_base_path = current_app.config.get('GPX_FILES_DIR', '/garmin/activities/')
     
-    records_to_upload = DownloadRecord.query.filter(
-        (DownloadRecord.dawarich == False) | (DownloadRecord.dawarich == None)
-    ).order_by(DownloadRecord.id.asc()).all() # Process oldest first
+    if record_id:
+        records_to_upload = DownloadRecord.query.filter_by(id=record_id).all()
+    else:
+        records_to_upload = DownloadRecord.query.filter(
+            (DownloadRecord.dawarich == False) | (DownloadRecord.dawarich == None)
+        ).order_by(DownloadRecord.id.asc()).all() # Process oldest first
 
     if not records_to_upload:
         flash("No new files to upload to Dawarich.", "info")
@@ -123,8 +127,8 @@ def upload():
         
         # Delay before processing the next file, if it's not the last one
         if i < len(records_to_upload) - 1:
-            current_app.logger.info(f"/upload: Waiting 5 seconds before next upload...")
-            time.sleep(5)
+            current_app.logger.info(f"/upload: Waiting 2 seconds before next upload...")
+            time.sleep(2)
             
     # Flash a summary message
     if uploaded_count > 0 and failed_count == 0:
