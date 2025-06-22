@@ -4,7 +4,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container">
+<div class="header">
     <h2>Welcome to Garmin to Dawarich Sync</h2>
     <p>This application syncs location data from Garmin to Dawarich.</p>
     <p>
@@ -13,7 +13,7 @@
     </p>
 </div>
 
-<div class="container">
+<div class="container records">
     <h3>Download Records</h3>
     {% if records %}
     <table class="table">
@@ -44,4 +44,27 @@
         <p>No download records found.</p>
     {% endif %}
 </div>
+<div class="container settings">
+    <h3>Settings</h3>
+    <form method="post" action="{{ url_for('index.settings') }}">
+        <div class="form-group">
+            <label for="delete_old_gpx">Delete old GPX files after upload:</label>
+            <input type="checkbox" id="delete_old_gpx" name="delete_old_gpx" value="true" {% if settings.delete_old_gpx %}checked{% endif %}>
+        </div>
+        <div class="form-group">
+            <label for="manual_check_start_date">Manual Check Start Date:</label>
+            <input type="date" id="manual_check_start_date" name="manual_check_start_date" value="{{ settings.manual_check_start_date.isoformat() if settings.manual_check_start_date }}">
+        </div>
+        <div class="form-group">
+            <label for="manual_check_end_date">Manual Check End Date:</label>
+            <input type="date" id="manual_check_end_date" name="manual_check_end_date" value="{{ settings.manual_check_end_date.isoformat() if settings.manual_check_end_date }}">
+        </div>
+        <div class="form-group">
+            <label for="manual_check_delaynot">Manual Check Delay (days):</label>
+            <input type="number" id="manual_check_delaynot" name="manual_check_delaynot" value="{{ settings.manual_check_delaynot if settings.manual_check_delaynot is not none else '' }}">
+        </div>
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+    </form>
+</div>
+    
 {% endblock %}

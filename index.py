@@ -3,7 +3,7 @@
 # ========================================================
 from flask import Blueprint, render_template, request, current_app, flash, redirect, url_for
 import datetime
-from models import DownloadRecord, db
+from models import DownloadRecord, db, UserSettings
 from utils import download_activities, submit_location_data
 import os
 import time # Added for sleep functionality
@@ -17,7 +17,40 @@ def index():
         .order_by(DownloadRecord.id.desc()) \
         .paginate(page=page, per_page=20)
     records = pagination.items
-    return render_template('index.html', records=records, pagination=pagination)
+    settings = UserSettings.query.first()
+    return render_template('index.html', records=records, pagination=pagination, settings=settings)
+
+@index_bp.route('/settings', methods=['POST'])
+def settings():
+    settings = UserSettings.query.first()
+    if not settings:
+        flash("Settings could not be found to update.", "error")
+        return redirect(url_for('index.index'))
+
+    settings.delete_old_gpx = 'delete_old_gpx' in request.form
+
+    start_date_str = request.form.get('manual_check_start_date')
+    if start_date_str:
+        settings.manual_check_start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
+    else:
+        settings.manual_check_start_date = None
+
+    end_date_str = request.form.get('manual_check_end_date')
+    if end_date_str:
+        settings.manual_check_end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+    else:
+        settings.manual_check_end_date = None
+
+    delay_val = request.form.get('manual_check_delaynot')
+    if delay_val and delay_val.isdigit():
+        settings.manual_check_delaynot = int(delay_val)
+    else:
+        settings.manual_check_delaynot = None
+    
+    db.session.commit()
+    flash("Settings updated successfully.", "success")
+    return redirect(url_for('index.index'))
+
 
 @index_bp.route('/check')
 def check():

@@ -19,3 +19,15 @@ class DownloadRecord(db.Model):
     download_time = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     filename      = db.Column(db.String, nullable=False)
     dawarich      = db.Column(db.Boolean, nullable=False, default=False)
+
+
+# --------------------------------------------------------
+# - User Settings Model
+#---------------------------------------------------------
+class UserSettings(db.Model):
+    __tablename__ = 'user_settings'
+    id                      = db.Column(db.Integer, primary_key=True)
+    delete_old_gpx          = db.Column(db.Boolean, nullable=False, default=False)
+    manual_check_start_date = db.Column(db.Date, nullable=True)
+    manual_check_end_date   = db.Column(db.Date, nullable=True)
+    manual_check_delay   = db.Column(db.Integer, nullable=True)

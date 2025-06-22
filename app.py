@@ -4,7 +4,7 @@
 import os
 import ast
 from flask import Flask, jsonify
-from models import db
+from models import db, UserSettings
 from werkzeug.exceptions import BadRequest
 import index
 import datetime # Added for date calculations
@@ -86,6 +86,13 @@ def create_app():
     # == Ensure all tables exist and perform schema checks inside context ==
     with app.app_context():
         db.create_all()
+
+        # Check if UserSettings has any entries. If not, create a default one.
+        if UserSettings.query.count() == 0:
+            default_settings = UserSettings()
+            db.session.add(default_settings)
+            db.session.commit()
+            app.logger.info("Created default user settings.")
 
         # == Inject App Version into Templates ============================================
         @app.context_processor
