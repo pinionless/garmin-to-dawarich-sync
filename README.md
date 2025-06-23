@@ -82,14 +82,9 @@ Please support [`Dawarich`](https://github.com/Freika/dawarich)
 *   `/upload`: Attempts to upload all unprocessed GPX files to Dawarich.
 
 ## To Do
-- Update function
 1. Check if upload was sucessfull and exists in imports page
 2. Check if location data exists in gpx before upload
 3. Customize time and date of automatic checks
-- New function:
-4. Customizable manual checks
-- Update:
-5. Styles
 
 
 ## Example Docker Compose file
