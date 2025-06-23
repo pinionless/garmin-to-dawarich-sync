@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.12.0]
+## [0.12]
 ### Added
 - **User Settings**: A new "Settings" section on the UI to configure application behavior, including a manual date range check and an override for Dawarich version verification.
 - **Database Models**: Added `UserSettings` table to persist user preferences.
@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Upload Logic**: The `/upload` route can now handle bulk uploads or single-file uploads by record ID.
+- **Download Logic**: Activities without any location data (trackpoints) are now skipped during the download process.
 - **UI Feedback**: The UI now visually indicates when a GPX file is missing from the filesystem by striking through the filename and disabling relevant actions.
 - **JavaScript Refactoring**: Refactored inline JavaScript for status polling into a dedicated `static/app.js` file.
 - **Mobile Layout**: Improved mobile layout for better usability on small screens, including shortened footer text and always-visible pagination controls.

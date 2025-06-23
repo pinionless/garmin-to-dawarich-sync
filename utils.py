@@ -311,11 +311,18 @@ def download_activities(startdate: datetime.datetime,
             current_app.logger.info(f"Already downloaded, skipping: {filename}")
             continue
 
-        path     = os.path.join(save_to, filename)
         data = gc.download_activity(
             act_id,
             dl_fmt=gc.ActivityDownloadFormat.GPX
         )
+
+        # Parse the GPX data and check for trackpoints
+        soup = BeautifulSoup(data, 'xml')
+        if not soup.find('trkpt'):
+            current_app.logger.info(f"Skipping activity {act_id} ('{name}') as it contains no location data.")
+            continue
+
+        path = os.path.join(save_to, filename)
         with open(path, "wb") as fb:
             fb.write(data)
 
