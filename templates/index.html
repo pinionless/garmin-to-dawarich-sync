@@ -6,7 +6,7 @@
 {% block content %}
 
 <div class="container records">
-    <h3>Download Records</h3>
+    <h3 class="hide">Download Records</h3>
     {% if records %}
     <table class="table">
         <thead>
@@ -66,13 +66,26 @@
             {% endfor %}
         </tbody>
     </table>
-    <nav>
+    <nav class="pagination-nav-desktop">
         {% if pagination.has_prev %}
             <a href="{{ url_for('index.index', page=pagination.prev_num) }}">Previous</a>
         {% endif %}
         <span>Page {{ pagination.page }} of {{ pagination.pages }}</span>
         {% if pagination.has_next %}
             <a href="{{ url_for('index.index', page=pagination.next_num) }}">Next</a>
+        {% endif %}
+    </nav>
+    <nav class="pagination-nav-mobile">
+        {% if pagination.has_prev %}
+            <a href="{{ url_for('index.index', page=pagination.prev_num) }}" class="btn btn-secondary">Previous</a>
+        {% else %}
+            <span class="btn btn-disabled">Previous</span>
+        {% endif %}
+        <span class="btn page-info">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        {% if pagination.has_next %}
+            <a href="{{ url_for('index.index', page=pagination.next_num) }}" class="btn btn-secondary">Next</a>
+        {% else %}
+            <span class="btn btn-disabled">Next</span>
         {% endif %}
     </nav>
     {% else %}

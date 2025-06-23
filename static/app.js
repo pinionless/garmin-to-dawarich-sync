@@ -2,8 +2,11 @@ $(document).ready(function() {
     let pollingInterval;
     const statusContainer = $('#custom-check-status-container');
     const statusUrl = statusContainer.data('status-url');
-    const startBtn = $('#start-custom-check-btn');
-    const stopBtn = $('#stop-custom-check-btn');
+    const startBtn = $('#start-custom-check-btn, #mobile-start-custom-check-btn');
+    const stopBtn = $('#stop-custom-check-btn, #mobile-stop-custom-check-btn');
+    const settingsPanel = $('.container.settings');
+    const settingsBtn = $('#mobile-settings-btn');
+    const overlay = $('.overlay');
 
     if (!statusUrl) {
         return;
@@ -47,4 +50,24 @@ $(document).ready(function() {
             }
         }
     });
+
+    $('.mobile-header .btn').on('click', function(e) {
+        if ($(this).hasClass('no-confirm')) {
+            return;
+        }
+        const title = $(this).attr('title');
+        if (!confirm('Are you sure you want to ' + title + '?')) {
+            e.preventDefault();
+        }
+    });
+
+    function toggleSettings(e) {
+        if (e) e.preventDefault();
+        settingsPanel.toggleClass('open');
+        overlay.toggleClass('open');
+        settingsBtn.toggleClass('active');
+    }
+
+    settingsBtn.on('click', toggleSettings);
+    overlay.on('click', toggleSettings);
 });

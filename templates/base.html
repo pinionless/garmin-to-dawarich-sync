@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    <header>
+    <header class="desktop-header">
         <h3>Actions</h3>
         <p>
             <a href="{{ url_for('index.check') }}" class="btn btn-primary">Quick Check</a>
@@ -21,7 +21,27 @@
             <a href="{{ url_for('index.stop_custom_check') }}" id="stop-custom-check-btn" class="btn {% if is_custom_check_running %}btn-primary{% else %}btn-secondary{% endif %}">Stop Custom Check</a>
         </p>
     </header>
+
+    <header class="mobile-header">
+        <a href="{{ url_for('index.check') }}" class="btn btn-primary" title="Quick Check">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        </a>
+        <a href="{{ url_for('index.upload') }}" class="btn {% if has_pending_uploads %}btn-primary{% else %}btn-secondary{% endif %}" title="Upload to Dawarich">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        </a>
+        <a href="{{ url_for('index.start_custom_check') }}" id="mobile-start-custom-check-btn" class="btn {% if is_custom_check_running %}btn-secondary{% else %}btn-primary{% endif %}" title="Start Custom Check">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        </a>
+        <a href="{{ url_for('index.stop_custom_check') }}" id="mobile-stop-custom-check-btn" class="btn {% if is_custom_check_running %}btn-primary{% else %}btn-secondary{% endif %}" title="Stop Custom Check">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+        </a>
+        <a href="#" id="mobile-settings-btn" class="btn btn-secondary no-confirm" title="Settings">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </a>
+    </header>
     
+    <div class="overlay"></div>
+
     <div id="custom-check-status-container" style="display: none;" data-status-url="{{ url_for('index.custom_check_status') }}">
         <div id="custom-check-status" class="box alert-info"></div>
     </div>
@@ -33,7 +53,7 @@
     </main>
     
     <footer>
-        <p><a href="https://github.com/pinionless/garmin-to-dawarich-sync">Dawarich Location Sync</a> Version: {{ app_version }}</p>
+        <p><a href="https://github.com/pinionless/garmin-to-dawarich-sync">Garmin to Dawarich Location Sync</a> Version: {{ app_version }}</p>
     </footer>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="{{ url_for('static', filename='app.js') }}"></script>
