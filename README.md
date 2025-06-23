@@ -33,11 +33,11 @@ This application automates the process of downloading GPX activity files from Ga
 *   **Persistent Database**: Uses PostgreSQL or LiteFS (SQLite) to store a record of all downloaded files and their upload status.
 
 ## Historical Download
-    - You can download historical location data from any period of time from garmin.
-    - Set start and end dates in settings and run "Custom Check"
-    - The script will download one day at a time and with a delay proceed to next one.
-    - For significant time period please consider settings larger delay to avoid getting flagged/banned by Garmin Connect.
-    - After GPX files are downloaded you have to trigger manual upload to Dawarich
+    - You can download historical location data from any period from Garmin.
+    - Set the start and end dates in the settings and run "Custom Check."
+    - The script will download one day at a time, proceeding to the next day after a delay.
+    - For significant time periods, consider setting a larger delay to avoid being flagged or banned by Garmin Connect.
+    - After GPX files are downloaded, you must trigger a manual upload to Dawarich.
 
 ## Prerequisites
 
