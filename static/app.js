@@ -70,4 +70,23 @@ $(document).ready(function() {
 
     settingsBtn.on('click', toggleSettings);
     overlay.on('click', toggleSettings);
+
+    // Action Modal Logic
+    $('.open-action-modal').on('click', function(e) {
+        e.preventDefault();
+        const modalId = $(this).data('modal-id');
+        $('#' + modalId).addClass('open');
+    });
+
+    // Close modal when clicking the close button
+    $('.action-modal .close-modal').on('click', function() {
+        $(this).closest('.action-modal').removeClass('open');
+    });
+
+    // Close modal when clicking on the backdrop
+    $('.action-modal').on('click', function(e) {
+        if ($(e.target).is('.action-modal')) {
+            $(this).removeClass('open');
+        }
+    });
 });

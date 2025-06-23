@@ -87,6 +87,13 @@ tbody tr:nth-child(odd) {
     border-color: #6c757d;
 }
 
+.btn-disabled {
+    background-color: #e9ecef !important;
+    color: #6c757d !important;
+    cursor: not-allowed !important;
+    border-color: #ced4da !important;
+}
+
 .form-group {
     margin-bottom: 0.8rem;
 }
@@ -166,7 +173,9 @@ footer {
 .show {
     display: none;
 }
-
+.action-modal {
+    display: none; /* Hidden by default */
+}
 @media (max-width: 850px) {
     .records {
         padding:0;
@@ -222,6 +231,45 @@ footer {
     }
     .pagination-nav-mobile .btn:last-child {
         border-right: none;
+    }
+    .action-modal {
+        display: none; /* Hidden by default */
+        position: fixed; /* Stay in place */
+        z-index: 1020; /* Sit on top */
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto; /* Enable scroll if needed */
+        background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+        justify-content: center;
+        align-items: center;
+    }
+    .action-modal.open {
+        display: flex;
+    }
+    .action-modal-content {
+        background-color: #fefefe;
+        margin: auto;
+        padding: 20px;
+        border: 1px solid #888;
+        border-radius: 6px;
+        width: 85%;
+        max-width: 320px;
+        text-align: center;
+    }
+    .action-modal-content h4 {
+        margin-top: 0;
+        margin-bottom: 15px;
+    }
+    .action-modal-content .btn {
+        display: block;
+        width: 100%;
+        margin: 8px 0;
+        box-sizing: border-box;
+    }
+    .action-modal-content .close-modal {
+        margin-top: 15px;
     }
     footer {
         position: fixed;

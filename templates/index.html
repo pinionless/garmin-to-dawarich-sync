@@ -55,11 +55,31 @@
                         <a href="{{ url_for('index.remove_record', record_id=rec.id) }}" onclick="return confirm('Are you sure you want to delete this record (ID: {{ rec.id }})?');">Delete Record</a>
                     </div>
                     <div class="show svg">
-                        <a href="{{ url_for('index.upload', record_id=rec.id) }}" title="Actions">
+                        <a href="#" class="open-action-modal" data-modal-id="action-modal-{{ rec.id }}" title="Actions">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                             </svg>
                         </a>
+                    </div>
+                    <!-- Action Modal for Mobile -->
+                    <div id="action-modal-{{ rec.id }}" class="action-modal">
+                        <div class="action-modal-content">
+                            <h4>Actions for #{{ rec.id }}</h4>
+                            <div class="action-links">
+                                {% if rec.file_exists %}
+                                    <a href="{{ url_for('index.upload', record_id=rec.id) }}" class="btn btn-primary">Upload</a>
+                                {% else %}
+                                    <span class="btn btn-primary btn-disabled">Upload</span>
+                                {% endif %}
+                                {% if rec.file_exists %}
+                                    <a href="{{ url_for('index.remove_file', record_id=rec.id) }}" class="btn btn-secondary" onclick="return confirm('Are you sure you want to delete the file {{ rec.filename }}?');">Delete File</a>
+                                {% else %}
+                                    <span class="btn btn-secondary btn-disabled">Delete File</span>
+                                {% endif %}
+                                <a href="{{ url_for('index.remove_record', record_id=rec.id) }}" class="btn btn-secondary" onclick="return confirm('Are you sure you want to delete this record (ID: {{ rec.id }})?');">Delete Record</a>
+                            </div>
+                            <button type="button" class="btn btn-secondary close-modal">Close</button>
+                        </div>
                     </div>
                 </td>
             </tr>
@@ -96,10 +116,14 @@
 <div class="container settings">
     <h3>Settings</h3>
     <form method="post" action="{{ url_for('index.settings') }}">
+
+        <!--
         <div class="form-group">
             <label for="delete_old_gpx">Delete old GPX files after upload:</label>
             <input type="checkbox" id="delete_old_gpx" name="delete_old_gpx" value="true" {% if settings.delete_old_gpx %}checked{% endif %}>
         </div>
+        -->
+
         <div class="form-group">
             <label for="ignore_safe_dawarich_versions">Ignore Dawarich safe versions check:</label>
             <input type="checkbox" id="ignore_safe_dawarich_versions" name="ignore_safe_dawarich_versions" value="true" {% if settings.ignore_safe_dawarich_versions %}checked{% endif %}>
