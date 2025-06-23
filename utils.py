@@ -18,6 +18,73 @@ from models import db, DownloadRecord, UserSettings
 import hashlib, base64
 import time # Added for sleep functionality
 
+def run_custom_check(app, stop_event):
+    """
+    Runs a custom check for activities in a date range, day by day, with a delay.
+    This function is designed to be run in a background thread.
+    """
+    with app.app_context():
+        task_info = app.config['CUSTOM_CHECK_TASK']
+        task_info['status_message'] = "Starting custom check..."
+        app.logger.info("Background custom check thread started.")
+        settings = UserSettings.query.first()
+        
+        if not all([settings, settings.manual_check_start_date, settings.manual_check_end_date, settings.manual_check_delay_seconds is not None]):
+            app.logger.error("Custom check thread exiting: Invalid settings.")
+            task_info['status_message'] = "Custom check failed: Invalid settings."
+            return
+
+        current_date = settings.manual_check_start_date
+        end_date = settings.manual_check_end_date
+        delay = settings.manual_check_delay_seconds
+
+        while current_date <= end_date:
+            if stop_event.is_set():
+                app.logger.info(f"Custom check stop signal received. Stopping before processing {current_date.isoformat()}.")
+                task_info['status_message'] = "Custom check stopped by user."
+                break
+
+            status_msg = f"Processing date {current_date.isoformat()}..."
+            task_info['status_message'] = status_msg
+            app.logger.info(f"Custom check: {status_msg}")
+            
+            start_of_day = datetime.datetime.combine(current_date, datetime.time.min)
+            end_of_day = datetime.datetime.combine(current_date, datetime.time.max)
+
+            try:
+                count = download_activities(start_of_day, end_of_day)
+                app.logger.info(f"Custom check: Downloaded {count} activities for {current_date.isoformat()}.")
+                
+                # Update start date for the next run
+                settings.manual_check_start_date = current_date + datetime.timedelta(days=1)
+                db.session.commit()
+                app.logger.info(f"Custom check: Updated start date to {settings.manual_check_start_date.isoformat()}.")
+
+            except Exception as e:
+                error_msg = f"Custom check failed on {current_date.isoformat()}: {e}"
+                task_info['status_message'] = error_msg
+                app.logger.error(error_msg, exc_info=True)
+                app.logger.error("Custom check: Aborting due to error.")
+                break
+            
+            # Move to the next day
+            current_date += datetime.timedelta(days=1)
+
+            # If there are more days to process, wait
+            if current_date <= end_date and not stop_event.is_set():
+                wait_msg = f"Waiting for {delay} seconds before processing next day."
+                task_info['status_message'] = wait_msg
+                app.logger.info(f"Custom check: {wait_msg}")
+                time.sleep(delay)
+
+        if not stop_event.is_set():
+            task_info['status_message'] = "Custom check finished successfully."
+        app.logger.info("Background custom check thread finished.")
+        # Clean up the task info in the app config
+        app.config['CUSTOM_CHECK_TASK']['thread'] = None
+        app.config['CUSTOM_CHECK_TASK']['stop_event'] = None
+
+
 def check_dawarich_connection(force_check=False):
     """
     Checks connection and login to Dawarich. Caches the result for 5 minutes.

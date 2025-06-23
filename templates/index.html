@@ -100,8 +100,8 @@
             <input type="date" id="manual_check_end_date" name="manual_check_end_date" value="{{ settings.manual_check_end_date.isoformat() if settings.manual_check_end_date }}">
         </div>
         <div class="form-group">
-            <label for="manual_check_delaynot">Manual Check Delay (seconds):</label>
-            <input type="number" id="manual_check_delaynot" name="manual_check_delaynot" value="{{ settings.manual_check_delaynot if settings.manual_check_delaynot is not none else '' }}">
+            <label for="manual_check_delay_seconds">Manual Check Delay (seconds):</label>
+            <input type="number" id="manual_check_delay_seconds" name="manual_check_delay_seconds" value="{{ settings.manual_check_delay_seconds if settings.manual_check_delay_seconds is not none else '' }}">
         </div>
         <button type="submit" class="btn btn-primary">Save Settings</button>
     </form>

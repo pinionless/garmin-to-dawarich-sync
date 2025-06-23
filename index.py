@@ -1,14 +1,22 @@
 # ========================================================
 # = index.py
 # ========================================================
-from flask import Blueprint, render_template, request, current_app, flash, redirect, url_for
+from flask import Blueprint, render_template, request, current_app, flash, redirect, url_for, jsonify
 import datetime
 from models import DownloadRecord, db, UserSettings
-from utils import download_activities, submit_location_data
+from utils import download_activities, submit_location_data, run_custom_check
 import os
 import time # Added for sleep functionality
+import threading
 
 index_bp = Blueprint('index', __name__)
+
+@index_bp.route('/custom_check_status')
+def custom_check_status():
+    task_info = current_app.config['CUSTOM_CHECK_TASK']
+    is_running = task_info.get('thread') and task_info['thread'].is_alive()
+    message = task_info.get('status_message', 'N/A')
+    return jsonify(is_running=is_running, message=message)
 
 @index_bp.route('/')
 def index():
@@ -19,12 +27,19 @@ def index():
     records = pagination.items
     settings = UserSettings.query.first()
 
+    task_info = current_app.config['CUSTOM_CHECK_TASK']
+    is_custom_check_running = task_info.get('thread') and task_info['thread'].is_alive()
+
+    has_pending_uploads = db.session.query(DownloadRecord.query.filter(
+        (DownloadRecord.dawarich == False) | (DownloadRecord.dawarich == None)
+    ).exists()).scalar()
+
     gpx_base_path = current_app.config.get('GPX_FILES_DIR', '/garmin/activities/')
     for rec in records:
         gpx_file_path = os.path.join(gpx_base_path, rec.filename)
         rec.file_exists = os.path.exists(gpx_file_path)
 
-    return render_template('index.html', records=records, pagination=pagination, settings=settings)
+    return render_template('index.html', records=records, pagination=pagination, settings=settings, is_custom_check_running=is_custom_check_running, has_pending_uploads=has_pending_uploads)
 
 @index_bp.route('/settings', methods=['POST'])
 def settings():
@@ -48,11 +63,11 @@ def settings():
     else:
         settings.manual_check_end_date = None
 
-    delay_val = request.form.get('manual_check_delaynot')
+    delay_val = request.form.get('manual_check_delay_seconds')
     if delay_val and delay_val.isdigit():
-        settings.manual_check_delaynot = int(delay_val)
+        settings.manual_check_delay_seconds = int(delay_val)
     else:
-        settings.manual_check_delaynot = None
+        settings.manual_check_delay_seconds = None
     
     db.session.commit()
     flash("Settings updated successfully.", "success")
@@ -74,6 +89,53 @@ def check():
         current_app.logger.error(f"/check failed: {e}", exc_info=True)
         flash(f"Error downloading GPX files: {e}", "error")
     # go back to index page and show flash message
+    return redirect(url_for('index.index'))
+
+
+@index_bp.route('/start_custom_check')
+def start_custom_check():
+    task_info = current_app.config['CUSTOM_CHECK_TASK']
+    if task_info.get('thread') and task_info['thread'].is_alive():
+        flash("A custom check is already running.", "warning")
+        return redirect(url_for('index.index'))
+
+    settings = UserSettings.query.first()
+    if not all([settings.manual_check_start_date, settings.manual_check_end_date, settings.manual_check_delay_seconds is not None]):
+        flash("Please set a valid start date, end date, and delay for the custom check in Settings.", "error")
+        return redirect(url_for('index.index'))
+
+    if settings.manual_check_start_date > settings.manual_check_end_date:
+        flash("Start date cannot be after the end date.", "error")
+        return redirect(url_for('index.index'))
+
+    stop_event = threading.Event()
+    # Pass the real app object to the thread, not the proxy
+    thread = threading.Thread(target=run_custom_check, args=(current_app._get_current_object(), stop_event))
+    
+    task_info['thread'] = thread
+    task_info['stop_event'] = stop_event
+    
+    thread.start()
+    
+    flash("Custom check has been started in the background.", "info")
+    return redirect(url_for('index.index'))
+
+
+@index_bp.route('/stop_custom_check')
+def stop_custom_check():
+    task_info = current_app.config['CUSTOM_CHECK_TASK']
+    if task_info.get('thread') and task_info['thread'].is_alive():
+        if task_info.get('stop_event'):
+            task_info['stop_event'].set()
+            flash("Sent stop signal to custom check task. It will stop after the current day's processing.", "info")
+        else:
+            flash("Cannot stop the task: no stop event found.", "error")
+    else:
+        flash("No custom check task is currently running.", "warning")
+        # Clean up just in case
+        task_info['thread'] = None
+        task_info['stop_event'] = None
+
     return redirect(url_for('index.index'))
 
 

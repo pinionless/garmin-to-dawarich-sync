@@ -16,7 +16,6 @@ from utils import download_activities, scheduled_download_job, check_dawarich_co
 #---------------------------------------------------------
 __version__ = "0.12" # Current application version
 APP_TITLE = "Garmin to Dawarich Location Sync"
-TARGET_DB_SCHEMA_VERSION = "0.12"
 
 # --------------------------------------------------------
 # - Application Factory Function
@@ -28,13 +27,13 @@ def create_app():
     # == Configuration Settings ============================================
     # -- General Flask Configuration -------------------
     app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'your_default_secret_keyADFGHSAVZX')
-    app.config['TARGET_DB_SCHEMA_VERSION'] = TARGET_DB_SCHEMA_VERSION
     app.config['GARMIN_EMAIL'] = os.environ.get('GARMIN_EMAIL')
     app.config['GARMIN_PASSWORD'] = os.environ.get('GARMIN_PASSWORD')
     app.config['DAWARICH_EMAIL'] = os.environ.get('DAWARICH_EMAIL')
     app.config['DAWARICH_PASSWORD'] = os.environ.get('DAWARICH_PASSWORD')
     app.config['DAWARICH_HOST'] = os.environ.get('DAWARICH_HOST')
     app.config['_DAWARICH_CONNECTION_STATUS'] = {'status': None, 'timestamp': None, 'message': '', 'version': None}
+    app.config['CUSTOM_CHECK_TASK'] = {'thread': None, 'stop_event': None, 'status_message': 'Not running.'}
     app.config['SAFE_VERSIONS'] = ['0.28.1']
 
     raw = os.environ.get('EXCLUDE', '[]')
