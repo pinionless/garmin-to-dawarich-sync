@@ -11,6 +11,17 @@ This application automates the process of downloading GPX activity files from Ga
 ##### Here is a link in case you want to leave a tip.
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/V7V71FGZRZ)
 
+## Screenshots
+
+<p align="center">
+    <a href="./.github/Screenshot_1.jpg" target="_blank">
+        <img src="./.github/Screenshot_1.jpg" alt="Mobile View" height="500px" style="margin-right: 10px;">
+    </a>
+    <a href="./.github/Screenshot_2.jpg" target="_blank">
+        <img src="./.github/Screenshot_2.jpg" alt="Mobile View - Settings" height="500px">
+    </a>
+</p>
+
 ## Features
 *   **Automated Sync**: Runs a scheduled job daily (at 3:00 AM) to download yesterday's activities from Garmin Connect and upload them to Dawarich.
 *   **Manual Controls**: Trigger downloads and uploads manually through the web interface.
