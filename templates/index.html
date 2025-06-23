@@ -10,13 +10,26 @@
     {% if records %}
     <table class="table">
         <thead>
-            <tr><th>ID</th><th>Time</th><th>Filename</th><th>Dawarich</th><th>Actions</th></tr>
+            <tr>
+                <th>ID</th>
+                <th class="hide">Time</th>
+                <th>Filename</th>
+                <th>Dawarich</th>
+                <th>
+                    <div class="hide">Actions</div>
+                    <div class="show svg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                    </div>
+                </th>
+            </tr>
         </thead>
         <tbody>
             {% for rec in records %}
             <tr>
                 <td>{{ rec.id }}</td>
-                <td>{{ rec.download_time }}</td>
+                <td class="hide">{{ rec.download_time }}</td>
                 <td>
                     {% if rec.file_exists %}
                         {{ rec.filename }}
@@ -26,19 +39,28 @@
                 </td>
                 <td>{{ "Yes" if rec.dawarich else "No" }}</td>
                 <td>
-                    {% if rec.file_exists %}
-                        <a href="{{ url_for('index.upload', record_id=rec.id) }}">Upload</a>
-                    {% else %}
-                        <s>Upload</s>
-                    {% endif %}
-                     |
-                    {% if rec.file_exists %}
-                        <a href="{{ url_for('index.remove_file', record_id=rec.id) }}" onclick="return confirm('Are you sure you want to delete the file {{ rec.filename }}?');">Delete File</a>
-                    {% else %}
-                        <s>Delete File</s>
-                    {% endif %}
-                     |
-                    <a href="{{ url_for('index.remove_record', record_id=rec.id) }}" onclick="return confirm('Are you sure you want to delete this record (ID: {{ rec.id }})?');">Delete DB Record</a>
+                    <div class="hide">
+                        {% if rec.file_exists %}
+                            <a href="{{ url_for('index.upload', record_id=rec.id) }}">Upload</a>
+                        {% else %}
+                            <s>Upload</s>
+                        {% endif %}
+                        |
+                        {% if rec.file_exists %}
+                            <a href="{{ url_for('index.remove_file', record_id=rec.id) }}" onclick="return confirm('Are you sure you want to delete the file {{ rec.filename }}?');">Delete File</a>
+                        {% else %}
+                            <s>Delete File</s>
+                        {% endif %}
+                        |
+                        <a href="{{ url_for('index.remove_record', record_id=rec.id) }}" onclick="return confirm('Are you sure you want to delete this record (ID: {{ rec.id }})?');">Delete Record</a>
+                    </div>
+                    <div class="show svg">
+                        <a href="{{ url_for('index.upload', record_id=rec.id) }}" title="Actions">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                            </svg>
+                        </a>
+                    </div>
                 </td>
             </tr>
             {% endfor %}
@@ -66,6 +88,10 @@
             <input type="checkbox" id="delete_old_gpx" name="delete_old_gpx" value="true" {% if settings.delete_old_gpx %}checked{% endif %}>
         </div>
         <div class="form-group">
+            <label for="ignore_safe_dawarich_versions">Ignore Dawarich safe versions check:</label>
+            <input type="checkbox" id="ignore_safe_dawarich_versions" name="ignore_safe_dawarich_versions" value="true" {% if settings.ignore_safe_dawarich_versions %}checked{% endif %}>
+        </div>
+        <div class="form-group">
             <label for="manual_check_start_date">Manual Check Start Date:</label>
             <input type="date" id="manual_check_start_date" name="manual_check_start_date" value="{{ settings.manual_check_start_date.isoformat() if settings.manual_check_start_date }}">
         </div>
@@ -74,12 +100,8 @@
             <input type="date" id="manual_check_end_date" name="manual_check_end_date" value="{{ settings.manual_check_end_date.isoformat() if settings.manual_check_end_date }}">
         </div>
         <div class="form-group">
-            <label for="manual_check_delaynot">Manual Check Delay (days):</label>
+            <label for="manual_check_delaynot">Manual Check Delay (seconds):</label>
             <input type="number" id="manual_check_delaynot" name="manual_check_delaynot" value="{{ settings.manual_check_delaynot if settings.manual_check_delaynot is not none else '' }}">
-        </div>
-        <div class="form-group">
-            <label for="ignore_safe_dawarich_versions">Ignore Dawarich safe versions check:</label>
-            <input type="checkbox" id="ignore_safe_dawarich_versions" name="ignore_safe_dawarich_versions" value="true" {% if settings.ignore_safe_dawarich_versions %}checked{% endif %}>
         </div>
         <button type="submit" class="btn btn-primary">Save Settings</button>
     </form>

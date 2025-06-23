@@ -1,6 +1,7 @@
 body {
     font-family: 'Roboto', sans-serif;
-    max-width: 1000px;
+    max-width: 1100px;
+    min-width: 850px;
     margin: 16px auto;
     padding: 0 16px;
     background-color: #f8f9fa;
@@ -42,9 +43,12 @@ table, th, td {
 
 th, td {
     padding: 10px;
-    text-align: left;
+    vertical-align: middle;
+    text-align: center;
 }
-
+.svg {
+    line-height: 0;
+}
 th {
     background-color: #e9ecef;
 }
@@ -141,4 +145,27 @@ footer {
     text-align: center;
     margin-top: 32px;
     color: #6c757d;
+}
+.show {
+    display: none;
+}
+
+@media (max-width: 850px) {
+    body {
+        font-family: 'Roboto', sans-serif;
+        max-width: 95%;
+        min-width: 95%;
+        margin: 4px auto;
+        padding: 0 4px;
+        font-size: 12px;
+    }
+    th, td {
+        padding: 4px;
+    }
+    .hide {
+        display: none;
+    }
+    .show {
+        display: block;
+    }
 }

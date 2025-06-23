@@ -13,8 +13,12 @@
     <header>
         <h3>Actions</h3>
         <p>
-            <a href="{{ url_for('index.check') }}" class="btn btn-primary">Check for New Activities (Yesterday untill Now)</a>
-            <a href="{{ url_for('index.upload') }}" class="btn btn-secondary">Upload Pending Files to Dawarich</a>
+            <a href="{{ url_for('index.check') }}" class="btn btn-primary">Quick Check</a>
+            <a href="{{ url_for('index.upload') }}" class="btn btn-secondary">Upload to Dawarich</a>
+        </p>
+        <p>
+            <a href="{{ url_for('index.check') }}" class="btn btn-primary">Start Custom Check</a>
+            <a href="{{ url_for('index.upload') }}" class="btn btn-secondary">Stop Custom Check</a>
         </p>
     </header>
     
