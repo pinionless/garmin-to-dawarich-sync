@@ -90,10 +90,8 @@ Please support [`Dawarich`](https://github.com/Freika/dawarich).
 *   Navigate to `http://localhost:5000/` (or your mapped port) to access the web interface.
 
 ## To Do
-1. Verify that an upload was successful by checking the Dawarich imports page.
-2. Allow customization of the scheduled job's time.
-3. Better styles for PC.
-4. Delete files if upload to Dawarich was successful.
+1. Allow customization of the scheduled job's time.
+2. Better styles for PC.
 
 ## Example Docker Compose file
 ```yaml

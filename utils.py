@@ -343,6 +343,7 @@ def submit_location_data(gpx_path: str, source: str = "gpx") -> bool:
     3) Direct-upload the GPX file blob metadata
     4) Upload the actual GPX file
     5) Submit the import form with the signed_id of the uploaded blob
+    6) Check if upload was successful
     """
     if not check_dawarich_connection():
         current_app.logger.error("submit_location_data: Aborting due to failed Dawarich connection check.")
@@ -491,5 +492,35 @@ def submit_location_data(gpx_path: str, source: str = "gpx") -> bool:
     resp.raise_for_status()
     current_app.logger.info(f"submit_location_data: Step 5: Final import POST to {import_url} successful (status={resp.status_code}).")
 
-    current_app.logger.info(f"submit_location_data: Successfully imported {filename} (blob signed_id: {signed_id[:15]}…).")
-    return True
+    # -- 6) CHECK IF UPLOAD WAS SUCCESSFUL --------------------------------
+    # After a successful import, we should be on the /imports page.
+    # We'll check if the filename appears in the list of imports.
+    current_app.logger.info(f"submit_location_data: Step 6: Verifying presence of {filename} on imports page.")
+    soup_imports = BeautifulSoup(resp.text, 'html.parser')
+    
+    # Find all links that point to an import detail page
+    import_links = soup_imports.find_all('a', href=lambda href: href and href.startswith('/imports/'))
+    
+    found = False
+    for link in import_links:
+        if link.text.strip() == filename:
+            found = True
+            break
+            
+    if found:
+        current_app.logger.info(f"submit_location_data: Step 6: Verification successful. Found {filename} in imports list.")
+        
+        # Check settings to see if we should delete the file
+        settings = UserSettings.query.first()
+        if settings and settings.delete_old_gpx:
+            try:
+                os.remove(gpx_path)
+                current_app.logger.info(f"submit_location_data: Deleted successfully uploaded file as per user setting: {gpx_path}")
+            except OSError as e:
+                current_app.logger.error(f"submit_location_data: Failed to delete file {gpx_path}: {e}", exc_info=True)
+
+        current_app.logger.info(f"submit_location_data: Successfully imported {filename} (blob signed_id: {signed_id[:15]}…).")
+        return True
+    else:
+        current_app.logger.error(f"submit_location_data: Step 6: Verification FAILED. Did not find {filename} in imports list after successful upload POST.")
+        return False
