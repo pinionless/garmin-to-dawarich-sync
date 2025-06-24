@@ -9,3 +9,4 @@ gunicorn
 git+https://github.com/cyberjunky/python-garminconnect.git
 bs4
 APScheduler
+lxml

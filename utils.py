@@ -317,7 +317,8 @@ def download_activities(startdate: datetime.datetime,
         )
 
         # Parse the GPX data and check for trackpoints
-        soup = BeautifulSoup(data, 'xml')
+        # The 'xml' parser requires a library like 'lxml' to be installed.
+        soup = BeautifulSoup(data, 'lxml-xml')
         if not soup.find('trkpt'):
             current_app.logger.info(f"Skipping activity {act_id} ('{name}') as it contains no location data.")
             continue
