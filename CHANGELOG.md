@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.13]
+### Added
+- **File Deletion**: Added an option in settings to automatically delete GPX files from the disk after a successful upload to Dawarich.
+
+### Changed
+- **Upload Verification**: After uploading a file to Dawarich, the application now verifies that the file appears in the list of imports to confirm a successful upload.
+
+### Fixed
+- **CRITICAL ERROR**: requirements.txt - Added missing dependency
+
+
 ## [0.12]
 ### Added
 - **User Settings**: A new "Settings" section on the UI to configure application behavior, including a manual date range check and an override for Dawarich version verification.

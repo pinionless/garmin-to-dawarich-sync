@@ -33,11 +33,11 @@ This application automates the process of downloading GPX activity files from Ga
 *   **Persistent Database**: Uses PostgreSQL or LiteFS (SQLite) to store a record of all downloaded files and their upload status.
 
 ## Historical Download
-    - You can download historical location data from any period of time from garmin.
-    - Set start and end dates in settings and run "Custom Check"
-    - The script will download one day at a time and with a delay proceed to next one.
-    - For significant time period please consider settings larger delay to avoid getting flagged/banned by Garmin Connect.
-    - After GPX files are downloaded you have to trigger manual upload to Dawarich
+    - You can download historical location data from any period from Garmin.
+    - Set the start and end dates in the settings and run "Custom Check."
+    - The script will download one day at a time, proceeding to the next day after a delay.
+    - For significant time periods, consider setting a larger delay to avoid being flagged or banned by Garmin Connect.
+    - After GPX files are downloaded, you must trigger a manual upload to Dawarich.
 
 ## Prerequisites
 
@@ -90,10 +90,8 @@ Please support [`Dawarich`](https://github.com/Freika/dawarich).
 *   Navigate to `http://localhost:5000/` (or your mapped port) to access the web interface.
 
 ## To Do
-1. Verify that an upload was successful by checking the Dawarich imports page.
-2. Allow customization of the scheduled job's time.
-3. Better styles for PC.
-4. Delete files if upload to Dawarich was successful.
+1. Allow customization of the scheduled job's time.
+2. Better styles for PC.
 
 ## Example Docker Compose file
 ```yaml
