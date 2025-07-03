@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14]
+### Changed
+- **New Dawarich Version**: added new dawarich version, tested, works
+
+### Fixed
+- **ERROR**: fixed version checks when update to dawarich exists
+
 ## [0.13]
 ### Added
 - **File Deletion**: Added an option in settings to automatically delete GPX files from the disk after a successful upload to Dawarich.
