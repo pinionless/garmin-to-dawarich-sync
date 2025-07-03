@@ -139,7 +139,7 @@ def check_dawarich_connection(force_check=False):
         if version_link:
             version_span = version_link.find('span')
             if version_span:
-                dawarich_version = version_span.text.strip()
+                dawarich_version = version_span.text.strip().rstrip(' !').strip()
 
         settings = UserSettings.query.first()
         if settings and settings.ignore_safe_dawarich_versions:
