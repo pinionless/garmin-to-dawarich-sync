@@ -14,7 +14,7 @@ from utils import download_activities, scheduled_download_job, check_dawarich_co
 # --------------------------------------------------------
 # - Application Version
 #---------------------------------------------------------
-__version__ = "0.14" # Current application version
+__version__ = "0.15" # Current application version
 APP_TITLE = "Garmin to Dawarich Location Sync"
 
 # --------------------------------------------------------

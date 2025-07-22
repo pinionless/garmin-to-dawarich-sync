@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.15]
+### Changed
+- **New Dawarich Version**: added new dawarich version 0.30.0, tested, works
+
 ## [0.14]
 ### Changed
 - **New Dawarich Version**: added new dawarich version, tested, works
