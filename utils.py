@@ -87,13 +87,13 @@ def run_custom_check(app, stop_event):
 
 def check_dawarich_connection(force_check=False):
     """
-    Checks connection and login to Dawarich. Caches the result for 5 minutes.
+    Checks connection and login to Dawarich. Caches the result for 2 minutes.
     Flashes an error message on failure.
     """
     status_cache = current_app.config['_DAWARICH_CONNECTION_STATUS']
-    # Use cached status if available and not forced, and younger than 5 minutes
+    # Use cached status if available and not forced, and younger than 2 minutes
     if not force_check and status_cache.get('timestamp'):
-        if (time.time() - status_cache['timestamp']) < 900: # 5 minutes
+        if (time.time() - status_cache['timestamp']) < 120: # 2 minutes
             if not status_cache['status']:
                 flash(status_cache['message'], 'error')
             return status_cache['status']
