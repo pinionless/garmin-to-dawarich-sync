@@ -34,7 +34,7 @@ def create_app():
     app.config['DAWARICH_HOST'] = os.environ.get('DAWARICH_HOST')
     app.config['_DAWARICH_CONNECTION_STATUS'] = {'status': None, 'timestamp': None, 'message': '', 'version': None}
     app.config['CUSTOM_CHECK_TASK'] = {'thread': None, 'stop_event': None, 'status_message': 'Not running.'}
-    app.config['SAFE_VERSIONS'] = ['0.28.1', '0.29.1', '0.30.0']
+    app.config['SAFE_VERSIONS'] = ['0.28.1', '0.29.1', '0.30.0', '0.30.1', '0.30.2']
 
     raw = os.environ.get('EXCLUDE', '[]')
     try:

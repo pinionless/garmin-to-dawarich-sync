@@ -1,7 +1,8 @@
 # Changelog
 
-## [0.16]
-
+## [0.16] - 2025-07-23
+### Changed
+- **New Dawarich Version**: added new safe dawarich versions 0.30.1, 0.30.2
 
 ## [0.15]
 ### Changed
