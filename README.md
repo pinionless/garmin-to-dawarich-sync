@@ -42,7 +42,7 @@ To enable, set the following environment variables:
 | Variable | Required | Description |
 |---|---|---|
 | `GEOPULSE_ENABLE` | No | Set to `true` to enable. Defaults to `false`. |
-| `GEOPULSE_USER` | If enabled | The GeoPulse username, used as a subdirectory. |
+| `GEOPULSE_USER` | If enabled | The GeoPulse user **EMAIL**, used as a subdirectory. |
 | `GEOPULSE_PATH` | If enabled | The base path where GeoPulse files are stored. |
 
 All three must be set for the copy to take place. If the copy fails for any reason (permissions, disk space, etc.), the error is logged but does not interrupt the main download workflow.
