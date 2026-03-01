@@ -3,7 +3,7 @@
 This application automates the process of downloading GPX activity files from Garmin Connect and uploading them to a Dawarich instance.
 
 ## Tested Dawarich
-**Works with Dawarich 0.28.1**
+**Works with Dawarich 1.3.1**
 - Updates to the Dawarich app might break the upload (import) process.
 - By default, the application will only work with tested versions of Dawarich. This can be changed in settings.
 
@@ -31,6 +31,37 @@ This application automates the process of downloading GPX activity files from Ga
 *   **Robust Uploading**: Simulates browser behavior to robustly upload GPX files to Dawarich's direct upload endpoint.
 *   **Connection & Version Checks**: Performs pre-flight checks for Dawarich connection, credentials, and version compatibility to prevent errors.
 *   **Persistent Database**: Uses PostgreSQL or LiteFS (SQLite) to store a record of all downloaded files and their upload status.
+*   **GeoPulse Integration**: Optionally copies downloaded GPX files to a GeoPulse-compatible directory for additional location processing.
+
+## GeoPulse Integration
+
+You can optionally enable GeoPulse support to automatically copy each downloaded GPX file to a GeoPulse-compatible path. When enabled, every GPX file saved from Garmin will also be copied to `GEOPULSE_PATH/GEOPULSE_USER/filename.gpx`.
+
+To enable, set the following environment variables:
+
+| Variable | Required | Description |
+|---|---|---|
+| `GEOPULSE_ENABLE` | No | Set to `true` to enable. Defaults to `false`. |
+| `GEOPULSE_USER` | If enabled | The GeoPulse username, used as a subdirectory. |
+| `GEOPULSE_PATH` | If enabled | The base path where GeoPulse files are stored. |
+
+All three must be set for the copy to take place. If the copy fails for any reason (permissions, disk space, etc.), the error is logged but does not interrupt the main download workflow.
+
+**Important:** The `GEOPULSE_PATH` must be a shared volume mounted in both this container and the GeoPulse container. This allows GeoPulse to access the copied GPX files.
+
+```yaml
+services:
+  garmin-to-dawarich-sync:
+    volumes:
+      - ./garmin-to-dawarich-sync:/garmin
+      - ./geopulse-data/import-drop:/geopulse  # shared volume
+    environment:
+      GEOPULSE_PATH: "/geopulse"
+
+  geopulse:
+    volumes:
+      - ./geopulse-data:/geopulse  # same shared volume
+```
 
 ## Historical Download
     - You can download historical location data from any period from Garmin.
@@ -67,6 +98,11 @@ environment:
     # Garmin activity exclusion list (optional, Python list format)
     # Example: EXCLUDE: "['Virtual Ride', 'Indoor Cycling']"
     EXCLUDE: "[]"
+
+    # (Optional) GeoPulse Integration
+    GEOPULSE_ENABLE: "true"
+    GEOPULSE_USER: "your_geopulse_username"
+    GEOPULSE_PATH: "/path/to/geopulse"
 
     # (Optional) PostgreSQL Database Details
     POSTGRES_USER: "your_db_user"
@@ -112,6 +148,11 @@ services:
       DAWARICH_PASSWORD: "ABCDabcdd123"
       DAWARICH_HOST: "https://dawarich.example.com"
       
+      # Optional GeoPulse Integration
+      # GEOPULSE_ENABLE: "true"
+      # GEOPULSE_USER: "your_geopulse_username"
+      # GEOPULSE_PATH: "/path/to/geopulse"
+
       # Optional PostgreSQL connection
       POSTGRES_USER: "myuser"
       POSTGRES_PASSWORD: "mypassword"

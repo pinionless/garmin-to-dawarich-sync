@@ -17,6 +17,7 @@ from garth.exc import GarthHTTPError
 from models import db, DownloadRecord, UserSettings
 import hashlib, base64
 import time # Added for sleep functionality
+import shutil
 
 def run_custom_check(app, stop_event):
     """
@@ -326,6 +327,21 @@ def download_activities(startdate: datetime.datetime,
         path = os.path.join(save_to, filename)
         with open(path, "wb") as fb:
             fb.write(data)
+
+        # Copy GPX to GeoPulse path if enabled and configured
+        geopulse_enable = current_app.config.get('GEOPULSE_ENABLE', False)
+        geopulse_user = current_app.config.get('GEOPULSE_USER', '')
+        geopulse_path = current_app.config.get('GEOPULSE_PATH', '')
+
+        if geopulse_enable and geopulse_user and geopulse_path:
+            try:
+                dest_dir = os.path.join(geopulse_path, geopulse_user)
+                os.makedirs(dest_dir, exist_ok=True)
+                dest_file = os.path.join(dest_dir, filename)
+                shutil.copy2(path, dest_file)
+                current_app.logger.info(f"Copied GPX to GeoPulse: {dest_file}")
+            except Exception as e:
+                current_app.logger.error(f"Failed to copy GPX to GeoPulse: {e}")
 
         record = DownloadRecord(filename=filename)
         db.session.add(record)
