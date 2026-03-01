@@ -4,7 +4,11 @@
 from flask import Blueprint, render_template, request, current_app, flash, redirect, url_for, jsonify
 import datetime
 from models import DownloadRecord, db, UserSettings
-from utils import download_activities, submit_location_data, run_custom_check
+from utils import (
+    download_activities, submit_location_data, run_custom_check,
+    get_garmin_login_status, garmin_interactive_login,
+    garmin_complete_mfa, garmin_logout,
+)
 import os
 import time # Added for sleep functionality
 import threading
@@ -247,6 +251,52 @@ def remove_record(record_id):
         current_app.logger.error(f"Error removing record ID {record.id}: {e}", exc_info=True)
 
     return redirect(url_for('index.index'))
+
+
+@index_bp.route('/garmin/status')
+def garmin_status():
+    """JSON endpoint: check if Garmin tokens are valid."""
+    result = get_garmin_login_status()
+    return jsonify(result)
+
+
+@index_bp.route('/garmin/login', methods=['POST'])
+def garmin_login():
+    """JSON endpoint: begin interactive Garmin login."""
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify(status="error", message="Invalid request."), 400
+
+    email = (data.get('email') or '').strip()
+    password = data.get('password') or ''
+
+    if not email or not password:
+        return jsonify(status="error", message="Email and password are required."), 400
+
+    result = garmin_interactive_login(email, password)
+    return jsonify(result)
+
+
+@index_bp.route('/garmin/mfa', methods=['POST'])
+def garmin_mfa():
+    """JSON endpoint: complete MFA challenge."""
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify(status="error", message="Invalid request."), 400
+
+    mfa_code = (data.get('mfa_code') or '').strip()
+    if not mfa_code:
+        return jsonify(status="error", message="MFA code is required."), 400
+
+    result = garmin_complete_mfa(mfa_code)
+    return jsonify(result)
+
+
+@index_bp.route('/garmin/logout', methods=['POST'])
+def garmin_logout_route():
+    """JSON endpoint: remove stored Garmin tokens."""
+    result = garmin_logout()
+    return jsonify(result)
 
 
 def register_routes(app):
