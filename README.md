@@ -101,7 +101,7 @@ environment:
 
     # (Optional) GeoPulse Integration
     GEOPULSE_ENABLE: "true"
-    GEOPULSE_USER: "your_geopulse_username"
+    GEOPULSE_USER: "your_geopulse_email"
     GEOPULSE_PATH: "/path/to/geopulse"
 
     # (Optional) PostgreSQL Database Details
