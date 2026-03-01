@@ -61,7 +61,7 @@ jobs:
           platforms: linux/amd64   # Defines the target platform for the image
           push: true               # Tells the action to push the image to the registry
           tags: |
-            ghcr.io/pinionless/selfhost:rc
+            ghcr.io/pinionless/garmin-to-dawarich-sync:rc
 
       - name: Logout from GitHub Container Registry
         if: always()
