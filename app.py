@@ -14,7 +14,7 @@ from utils import download_activities, scheduled_download_job, check_dawarich_co
 # --------------------------------------------------------
 # - Application Version
 #---------------------------------------------------------
-__version__ = "0.16" # Current application version
+__version__ = "0.17" # Current application version
 APP_TITLE = "Garmin to Dawarich Location Sync"
 
 # --------------------------------------------------------
@@ -34,13 +34,18 @@ def create_app():
     app.config['DAWARICH_HOST'] = os.environ.get('DAWARICH_HOST')
     app.config['_DAWARICH_CONNECTION_STATUS'] = {'status': None, 'timestamp': None, 'message': '', 'version': None}
     app.config['CUSTOM_CHECK_TASK'] = {'thread': None, 'stop_event': None, 'status_message': 'Not running.'}
-    app.config['SAFE_VERSIONS'] = ['0.28.1', '0.29.1', '0.30.0', '0.30.1', '0.30.2']
+    app.config['SAFE_VERSIONS'] = ['0.28.1', '0.29.1', '0.30.0', '0.30.1', '0.30.2', '1.3.1']
 
     raw = os.environ.get('EXCLUDE', '[]')
     try:
         app.config['EXCLUDE'] = ast.literal_eval(raw)
     except (ValueError, SyntaxError):
         app.config['EXCLUDE'] = []
+
+    # -- GeoPulse Configuration -------------------
+    app.config['GEOPULSE_ENABLE'] = os.environ.get('GEOPULSE_ENABLE', 'false').lower() == 'true'
+    app.config['GEOPULSE_USER'] = os.environ.get('GEOPULSE_USER', '')
+    app.config['GEOPULSE_PATH'] = os.environ.get('GEOPULSE_PATH', '')
     
     # -- Database Configuration -------------------
     DB_USER = os.environ.get('POSTGRES_USER') # PostgreSQL username
