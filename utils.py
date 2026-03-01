@@ -290,7 +290,7 @@ def download_activities(startdate: datetime.datetime,
     os.makedirs(save_to, exist_ok=True)
     gc = init_garmin()
     activities = gc.get_activities_by_date(
-        startdate.isoformat(), enddate.isoformat()
+        startdate.strftime("%Y-%m-%d"), enddate.strftime("%Y-%m-%d")
     )
     
     exclusions = current_app.config.get('EXCLUDE', [])
