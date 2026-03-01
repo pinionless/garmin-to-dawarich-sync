@@ -1,0 +1,68 @@
+name: Deploy Release Candidate to GHCR
+
+# Authentication Setup Instructions:
+# For this workflow to publish images to GitHub Container Registry (GHCR),
+# you only need to configure repository permissions:
+#
+# 1. Go to your repository Settings > Actions > General
+# 2. Under "Workflow permissions", select "Read and write permissions"
+# 3. Click "Save"
+#
+# This workflow uses the built-in GITHUB_TOKEN which is automatically
+# available to all GitHub Actions workflows.
+
+on:
+  workflow_dispatch: # Allows manual triggering from the GitHub Actions UI
+  release:
+    types: [prereleased] # Triggers on pre-release publication
+  push:
+    tags:
+      - 'v*-rc' # Triggers on any tag with format v*-rc (e.g., v0.00.1-rc)
+
+concurrency: # Ensures only one deployment job runs at a time for a given ref
+  group: deploy-rc-${{ github.ref }}
+  cancel-in-progress: true # Cancels any in-progress runs for the same group when a new one starts
+
+jobs:
+  build_and_push_rc:
+    runs-on: ubuntu-latest
+
+    permissions: # Explicitly grant permissions needed by this workflow
+      contents: read   # To checkout the repository code
+      packages: write  # To push images to GitHub Container Registry (GHCR)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 # Action to fetch your repository code
+
+      - name: Extract tag name
+        id: tag
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            echo "TAG_NAME=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
+          else
+            echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3 # Sets up Docker Buildx for advanced build features
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and push Docker image to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64   # Defines the target platform for the image
+          push: true               # Tells the action to push the image to the registry
+          tags: |
+            ghcr.io/pinionless/selfhost:rc
+
+      - name: Logout from GitHub Container Registry
+        if: always()
+        run: docker logout ghcr.io # Ensures logout even if previous steps fail
