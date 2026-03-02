@@ -1,0 +1,207 @@
+name: Cleanup GHCR Images
+
+# Requires repository Settings > Actions > General >
+# Workflow permissions set to "Read and write permissions"
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to delete (leave empty to prune orphaned untagged images)'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Preview deletions without actually deleting'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    permissions:
+      packages: write
+
+    env:
+      OWNER: ${{ github.repository_owner }}
+      PACKAGE: ${{ github.event.repository.name }}
+      TAG: ${{ inputs.tag }}
+      DRY_RUN: ${{ inputs.dry_run }}
+
+    steps:
+      - name: Smart cleanup
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          OWNER_LC="${OWNER,,}"
+          API_BASE="/users/${OWNER_LC}/packages/container/${PACKAGE}"
+
+          echo "=== Package: ${OWNER_LC}/${PACKAGE} ==="
+          echo "=== Mode: ${TAG:+DELETE TAG '${TAG}'}${TAG:-PRUNE ORPHANS} ==="
+          echo "=== Dry run: ${DRY_RUN} ==="
+          echo ""
+
+          # -----------------------------------------------------------
+          # Fetch all versions (paginated)
+          # -----------------------------------------------------------
+          ALL_VERSIONS=$(gh api "${API_BASE}/versions" --paginate --jq '
+            .[] | {
+              id: .id,
+              name: .name,
+              tags: .metadata.container.tags
+            }' | jq -s '.')
+
+          TOTAL=$(echo "$ALL_VERSIONS" | jq 'length')
+          echo "Total versions in registry: ${TOTAL}"
+
+          # -----------------------------------------------------------
+          # Collect all digests referenced by ALL tagged images
+          # -----------------------------------------------------------
+          collect_referenced_digests() {
+            local check_tag="$1"
+            # Fetch the manifest for this tag and extract child digests
+            curl -sf \
+              -H "Authorization: Bearer $(echo "$GH_TOKEN")" \
+              -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json" \
+              "https://ghcr.io/v2/${OWNER_LC}/${PACKAGE}/manifests/${check_tag}" 2>/dev/null \
+              | jq -r '.manifests[]?.digest // empty' 2>/dev/null || true
+          }
+
+          # -----------------------------------------------------------
+          # MODE 1: Prune orphaned untagged images
+          # -----------------------------------------------------------
+          if [ -z "$TAG" ]; then
+            echo ""
+            echo "--- Collecting digests referenced by all tagged images ---"
+
+            # Get all tags
+            ALL_TAGS=$(echo "$ALL_VERSIONS" | jq -r '.[] | .tags[]? // empty' | sort -u)
+            REFERENCED_DIGESTS=""
+
+            for t in $ALL_TAGS; do
+              digests=$(collect_referenced_digests "$t")
+              if [ -n "$digests" ]; then
+                REFERENCED_DIGESTS="${REFERENCED_DIGESTS}${digests}"$'\n'
+                count=$(echo "$digests" | grep -c . || true)
+                echo "  Tag ':${t}' references ${count} digest(s)"
+              fi
+            done
+
+            REFERENCED_DIGESTS=$(echo "$REFERENCED_DIGESTS" | sort -u | grep . || true)
+
+            echo ""
+            echo "--- Finding orphaned untagged versions ---"
+
+            # Get untagged versions
+            UNTAGGED=$(echo "$ALL_VERSIONS" | jq -c '.[] | select(.tags | length == 0)')
+
+            echo "$UNTAGGED" | while IFS= read -r version; do
+              [ -z "$version" ] && continue
+              id=$(echo "$version" | jq -r '.id')
+              digest=$(echo "$version" | jq -r '.name')
+
+              if echo "$REFERENCED_DIGESTS" | grep -qF "$digest"; then
+                echo "  KEEP   id=${id} digest=${digest} (referenced by a tag)"
+              else
+                echo "  DELETE id=${id} digest=${digest} (orphaned)"
+                if [ "$DRY_RUN" = "false" ]; then
+                  gh api --method DELETE "${API_BASE}/versions/${id}" && echo "    -> Deleted" || echo "    -> Failed"
+                fi
+              fi
+            done
+
+            echo ""
+            echo "=== Done ==="
+
+          # -----------------------------------------------------------
+          # MODE 2: Delete a specific tag and its exclusive references
+          # -----------------------------------------------------------
+          else
+            echo ""
+            echo "--- Finding version with tag ':${TAG}' ---"
+
+            TARGET=$(echo "$ALL_VERSIONS" | jq -c --arg t "$TAG" '.[] | select(.tags[] == $t)' | head -1)
+
+            if [ -z "$TARGET" ]; then
+              echo "ERROR: Tag ':${TAG}' not found in registry"
+              exit 1
+            fi
+
+            TARGET_ID=$(echo "$TARGET" | jq -r '.id')
+            TARGET_DIGEST=$(echo "$TARGET" | jq -r '.name')
+            echo "  Found id=${TARGET_ID} digest=${TARGET_DIGEST}"
+
+            # Get digests referenced by the target tag
+            echo ""
+            echo "--- Collecting digests referenced by ':${TAG}' ---"
+            TARGET_REFS=$(collect_referenced_digests "$TAG")
+            echo "$TARGET_REFS" | while IFS= read -r d; do
+              [ -n "$d" ] && echo "  ${d}"
+            done
+
+            # Get digests referenced by ALL OTHER tags
+            echo ""
+            echo "--- Collecting digests referenced by other tags ---"
+            OTHER_TAGS=$(echo "$ALL_VERSIONS" | jq -r --arg t "$TAG" '.[] | .tags[]? // empty | select(. != $t)' | sort -u)
+            OTHER_DIGESTS=""
+
+            for t in $OTHER_TAGS; do
+              digests=$(collect_referenced_digests "$t")
+              if [ -n "$digests" ]; then
+                OTHER_DIGESTS="${OTHER_DIGESTS}${digests}"$'\n'
+                echo "  Tag ':${t}' references $(echo "$digests" | grep -c . || true) digest(s)"
+              fi
+            done
+
+            OTHER_DIGESTS=$(echo "$OTHER_DIGESTS" | sort -u | grep . || true)
+
+            # Find exclusively referenced digests (only by the target tag)
+            echo ""
+            echo "--- Determining exclusive references to delete ---"
+
+            EXCLUSIVE_DIGESTS=""
+            if [ -n "$TARGET_REFS" ]; then
+              while IFS= read -r d; do
+                [ -z "$d" ] && continue
+                if echo "$OTHER_DIGESTS" | grep -qF "$d"; then
+                  echo "  KEEP   ${d} (shared with another tag)"
+                else
+                  echo "  DELETE ${d} (exclusive to ':${TAG}')"
+                  EXCLUSIVE_DIGESTS="${EXCLUSIVE_DIGESTS}${d}"$'\n'
+                fi
+              done <<< "$TARGET_REFS"
+            fi
+
+            # Delete the tagged version itself
+            echo ""
+            echo "--- Deleting tag ':${TAG}' ---"
+            echo "  DELETE id=${TARGET_ID} digest=${TARGET_DIGEST}"
+            if [ "$DRY_RUN" = "false" ]; then
+              gh api --method DELETE "${API_BASE}/versions/${TARGET_ID}" && echo "    -> Deleted" || echo "    -> Failed"
+            fi
+
+            # Delete exclusive child versions
+            if [ -n "$EXCLUSIVE_DIGESTS" ]; then
+              echo ""
+              echo "--- Deleting exclusive child versions ---"
+              while IFS= read -r d; do
+                [ -z "$d" ] && continue
+                child_id=$(echo "$ALL_VERSIONS" | jq -r --arg d "$d" '.[] | select(.name == $d) | .id')
+                if [ -n "$child_id" ]; then
+                  echo "  DELETE id=${child_id} digest=${d}"
+                  if [ "$DRY_RUN" = "false" ]; then
+                    gh api --method DELETE "${API_BASE}/versions/${child_id}" && echo "    -> Deleted" || echo "    -> Failed"
+                  fi
+                fi
+              done <<< "$EXCLUSIVE_DIGESTS"
+            fi
+
+            echo ""
+            echo "=== Done ==="
+          fi
