@@ -12,12 +12,14 @@ name: Deploy Release Candidate to GHCR
 # available to all GitHub Actions workflows.
 
 on:
-  workflow_dispatch: # Allows manual triggering from the GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag (defaults to rc if not provided)'
+        required: false
+        default: 'rc'
   release:
     types: [prereleased] # Triggers on pre-release publication
-  push:
-    tags:
-      - 'v*-rc' # Triggers on any tag with format v*-rc (e.g., v0.00.1-rc)
 
 concurrency: # Ensures only one deployment job runs at a time for a given ref
   group: deploy-rc-${{ github.ref }}
@@ -35,14 +37,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4 # Action to fetch your repository code
 
-      - name: Extract tag name
-        id: tag
-        run: |
-          if [[ "${{ github.event_name }}" == "release" ]]; then
-            echo "TAG_NAME=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
-          else
-            echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-          fi
+      - name: Derive image name
+        run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+        # ${GITHUB_REPOSITORY,,} lowercases owner/repo — GHCR requires lowercase
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3 # Sets up Docker Buildx for advanced build features
@@ -60,8 +57,7 @@ jobs:
           context: .
           platforms: linux/amd64   # Defines the target platform for the image
           push: true               # Tells the action to push the image to the registry
-          tags: |
-            ghcr.io/pinionless/garmin-to-dawarich-sync:rc
+          tags: ${{ env.IMAGE_NAME }}:${{ github.event.release.tag_name || inputs.tag || 'rc' }}
 
       - name: Logout from GitHub Container Registry
         if: always()

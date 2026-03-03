@@ -27,6 +27,8 @@ def create_app():
     # == Configuration Settings ============================================
     # -- General Flask Configuration -------------------
     app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'your_default_secret_keyADFGHSAVZX')
+    # Garmin credentials are optional – users can log in interactively
+    # via the Settings page (supports 2FA/MFA).
     app.config['GARMIN_EMAIL'] = os.environ.get('GARMIN_EMAIL')
     app.config['GARMIN_PASSWORD'] = os.environ.get('GARMIN_PASSWORD')
     app.config['DAWARICH_EMAIL'] = os.environ.get('DAWARICH_EMAIL')

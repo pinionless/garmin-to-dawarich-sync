@@ -260,28 +260,192 @@ def scheduled_download_job(app_instance):
         app_instance.logger.info(f"Scheduler: Upload job finished. Successfully uploaded: {uploaded_count}, Failed/Skipped: {failed_count}.")
 
 
-def init_garmin():
-    ts = '/garmin/.garminconnect'
-    b64 = '/garmin/.garminconnect_base64'
-    tokenstore = os.path.expanduser(ts)
-    tokenstore_b64 = os.path.expanduser(b64)
+GARMIN_TOKENSTORE = '/garmin/.garminconnect'
+GARMIN_TOKENSTORE_B64 = '/garmin/.garminconnect_base64'
 
-    email = current_app.config.get('GARMIN_EMAIL')
-    pwd   = current_app.config.get('GARMIN_PASSWORD')
+
+def get_garmin_login_status():
+    """Check whether valid Garmin tokens exist.
+
+    Returns a dict with:
+        logged_in (bool): True if tokens exist and can be loaded
+        display_name (str|None): The Garmin display name if available
+    """
+    tokenstore = GARMIN_TOKENSTORE
     try:
         gc = Garmin()
         gc.login(tokenstore)
+        name = gc.display_name or gc.full_name or "Garmin User"
+        return {"logged_in": True, "display_name": name}
+    except Exception:
+        return {"logged_in": False, "display_name": None}
+
+
+def garmin_interactive_login(email, password):
+    """Begin an interactive Garmin login from the web UI.
+
+    Returns a dict with:
+        status: "success" | "needs_mfa" | "error"
+        message: Human-readable message
+    On "needs_mfa", the MFA client state is stored in app.config
+    so that garmin_complete_mfa() can finish the flow.
+    """
+    tokenstore = GARMIN_TOKENSTORE
+    try:
+        gc = Garmin(email=email, password=password, return_on_mfa=True)
+        result = gc.login()
+
+        if isinstance(result, tuple) and result[0] == "needs_mfa":
+            # Stash the Garmin client + MFA state for the next step
+            current_app.config['_GARMIN_MFA_STATE'] = {
+                'gc': gc,
+                'client_state': result[1],
+            }
+            return {
+                "status": "needs_mfa",
+                "message": "MFA code required. Check your authenticator app or SMS."
+            }
+
+        # No MFA needed — save tokens
+        gc.garth.dump(tokenstore)
+        with open(GARMIN_TOKENSTORE_B64, "w") as f:
+            f.write(gc.garth.dumps())
+        current_app.logger.info("Garmin interactive login successful (no MFA).")
+        return {
+            "status": "success",
+            "message": "Logged in to Garmin Connect successfully.",
+            "display_name": gc.display_name or gc.full_name or "Garmin User",
+        }
+
+    except GarminConnectAuthenticationError as e:
+        current_app.logger.warning(f"Garmin interactive login auth error: {e}")
+        return {"status": "error", "message": "Invalid email or password."}
+    except GarminConnectTooManyRequestsError as e:
+        current_app.logger.warning(f"Garmin interactive login rate-limited: {e}")
+        return {"status": "error", "message": "Too many login attempts. Please wait a few minutes and try again."}
+    except Exception as e:
+        current_app.logger.error(f"Garmin interactive login failed: {e}", exc_info=True)
+        return {"status": "error", "message": f"Login failed: {e}"}
+
+
+def garmin_complete_mfa(mfa_code):
+    """Complete an MFA challenge started by garmin_interactive_login().
+
+    Returns a dict with:
+        status: "success" | "error"
+        message: Human-readable message
+    """
+    tokenstore = GARMIN_TOKENSTORE
+    mfa_state = current_app.config.get('_GARMIN_MFA_STATE')
+
+    if not mfa_state:
+        return {"status": "error", "message": "No pending MFA session. Please start the login again."}
+
+    gc = mfa_state['gc']
+    client_state = mfa_state['client_state']
+
+    try:
+        gc.resume_login(client_state, mfa_code)
+
+        # Save tokens
+        gc.garth.dump(tokenstore)
+        with open(GARMIN_TOKENSTORE_B64, "w") as f:
+            f.write(gc.garth.dumps())
+
+        # Clear MFA state
+        current_app.config.pop('_GARMIN_MFA_STATE', None)
+
+        current_app.logger.info("Garmin MFA login completed successfully.")
+        return {
+            "status": "success",
+            "message": "Logged in to Garmin Connect successfully.",
+            "display_name": gc.display_name or gc.full_name or "Garmin User",
+        }
+
+    except GarthHTTPError as e:
+        error_str = str(e)
+        if "429" in error_str:
+            current_app.config.pop('_GARMIN_MFA_STATE', None)
+            return {"status": "error", "message": "Too many attempts. Please wait and start login again."}
+        elif "401" in error_str or "403" in error_str:
+            return {"status": "error", "message": "Invalid MFA code. Please try again."}
+        else:
+            current_app.config.pop('_GARMIN_MFA_STATE', None)
+            current_app.logger.error(f"Garmin MFA failed: {e}", exc_info=True)
+            return {"status": "error", "message": f"MFA verification failed: {e}"}
+    except Exception as e:
+        current_app.config.pop('_GARMIN_MFA_STATE', None)
+        current_app.logger.error(f"Garmin MFA failed: {e}", exc_info=True)
+        return {"status": "error", "message": f"MFA verification failed: {e}"}
+
+
+def garmin_logout():
+    """Remove stored Garmin tokens."""
+    tokenstore = GARMIN_TOKENSTORE
+    b64_file = GARMIN_TOKENSTORE_B64
+    removed = False
+
+    if os.path.isdir(tokenstore):
+        shutil.rmtree(tokenstore, ignore_errors=True)
+        removed = True
+    if os.path.isfile(b64_file):
+        os.remove(b64_file)
+        removed = True
+
+    # Clear any pending MFA state
+    current_app.config.pop('_GARMIN_MFA_STATE', None)
+
+    if removed:
+        current_app.logger.info("Garmin tokens removed (logged out).")
+        return {"status": "success", "message": "Logged out of Garmin Connect."}
+    else:
+        return {"status": "success", "message": "Already logged out (no tokens found)."}
+
+
+def init_garmin():
+    """Initialise and return an authenticated Garmin client.
+
+    Attempts token-based login first, then falls back to env-var
+    credentials.  If MFA is required the user is directed to use the
+    interactive login in the web UI.
+    """
+    tokenstore = GARMIN_TOKENSTORE
+
+    email = current_app.config.get('GARMIN_EMAIL')
+    pwd   = current_app.config.get('GARMIN_PASSWORD')
+
+    # 1. Try cached tokens
+    try:
+        gc = Garmin()
+        gc.login(tokenstore)
+        return gc
     except (FileNotFoundError, GarthHTTPError, GarminConnectAuthenticationError):
-        if not email or not pwd:
-            raise ValueError("Missing credentials and no token cache")
+        pass  # Fall through to credential login
+
+    # 2. Try env-var credentials
+    if not email or not pwd:
+        raise ValueError(
+            "No cached Garmin session and no GARMIN_EMAIL/GARMIN_PASSWORD configured. "
+            "Please log in via the Settings page in the web UI."
+        )
+
+    try:
         gc = Garmin(email=email, password=pwd, return_on_mfa=True)
         result = gc.login()
         if isinstance(result, tuple) and result[0] == "needs_mfa":
-            raise RuntimeError("MFA required – pre‐populate tokens")
+            raise RuntimeError(
+                "MFA is required for this Garmin account. "
+                "Please log in via the Settings page in the web UI."
+            )
         gc.garth.dump(tokenstore)
-        with open(tokenstore_b64, "w") as f:
+        with open(GARMIN_TOKENSTORE_B64, "w") as f:
             f.write(gc.garth.dumps())
         gc.login(tokenstore)
+    except (RuntimeError, ValueError):
+        raise
+    except Exception as e:
+        raise ValueError(f"Garmin credential login failed: {e}") from e
+
     return gc
 
 def download_activities(startdate: datetime.datetime,

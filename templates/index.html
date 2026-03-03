@@ -114,6 +114,64 @@
 </div>
 
 <div class="container settings">
+    <h3>Garmin Connect</h3>
+    <div id="garmin-auth-section"
+         data-status-url="{{ url_for('index.garmin_status') }}"
+         data-login-url="{{ url_for('index.garmin_login') }}"
+         data-mfa-url="{{ url_for('index.garmin_mfa') }}"
+         data-logout-url="{{ url_for('index.garmin_logout_route') }}">
+
+        <!-- Status: loading -->
+        <div id="garmin-status-loading" class="garmin-status">
+            <span class="garmin-status-dot garmin-dot-loading"></span>
+            Checking...
+        </div>
+
+        <!-- Status: logged in -->
+        <div id="garmin-logged-in" class="garmin-status" style="display:none;">
+            <span class="garmin-status-dot garmin-dot-ok"></span>
+            Logged in as <strong id="garmin-display-name"></strong>
+            <button type="button" id="garmin-logout-btn" class="btn btn-secondary btn-sm">Log out</button>
+        </div>
+
+        <!-- Status: logged out / login form -->
+        <div id="garmin-logged-out" style="display:none;">
+            <div class="garmin-status">
+                <span class="garmin-status-dot garmin-dot-off"></span>
+                Not connected
+            </div>
+            <div id="garmin-login-form" class="garmin-form">
+                <div class="form-group">
+                    <label for="garmin-email">Email:</label>
+                    <input type="email" id="garmin-email" class="form-control" placeholder="garmin@example.com" autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label for="garmin-password">Password:</label>
+                    <input type="password" id="garmin-password" class="form-control" placeholder="Password" autocomplete="current-password">
+                </div>
+                <button type="button" id="garmin-login-btn" class="btn btn-primary">Log in</button>
+            </div>
+        </div>
+
+        <!-- MFA form (shown when needed) -->
+        <div id="garmin-mfa-form" class="garmin-form" style="display:none;">
+            <div class="garmin-status">
+                <span class="garmin-status-dot garmin-dot-loading"></span>
+                MFA code required
+            </div>
+            <div class="form-group">
+                <label for="garmin-mfa-code">Enter the code from your authenticator app or SMS:</label>
+                <input type="text" id="garmin-mfa-code" class="form-control" placeholder="123456" autocomplete="one-time-code" inputmode="numeric" maxlength="10">
+            </div>
+            <button type="button" id="garmin-mfa-btn" class="btn btn-primary">Verify</button>
+            <button type="button" id="garmin-mfa-cancel-btn" class="btn btn-secondary">Cancel</button>
+        </div>
+
+        <!-- Error/info message area -->
+        <div id="garmin-auth-message" class="garmin-auth-message" style="display:none;"></div>
+    </div>
+
+    <hr>
     <h3>Settings</h3>
     <form method="post" action="{{ url_for('index.settings') }}">
         <div class="form-group">
