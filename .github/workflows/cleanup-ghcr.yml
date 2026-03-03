@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to delete (leave empty to prune orphaned untagged images)'
+        description: 'Tag to delete, "purge" to keep only :latest, or empty to prune orphans'
         required: false
         default: ''
       dry_run:
@@ -43,7 +43,9 @@ jobs:
           API_BASE="/users/${OWNER_LC}/packages/container/${PACKAGE}"
 
           echo "=== Package: ${OWNER_LC}/${PACKAGE} ==="
-          if [ -n "$TAG" ]; then
+          if [ "$TAG" = "purge" ]; then
+            echo "=== Mode: PURGE ALL (keep only :latest) ==="
+          elif [ -n "$TAG" ]; then
             echo "=== Mode: DELETE TAG '${TAG}' ==="
           else
             echo "=== Mode: PRUNE ORPHANS ==="
@@ -136,7 +138,70 @@ jobs:
             echo "=== Done ==="
 
           # -----------------------------------------------------------
-          # MODE 2: Delete a specific tag and its exclusive references
+          # MODE 2: PURGE — delete everything except :latest and its deps
+          # -----------------------------------------------------------
+          elif [ "$TAG" = "purge" ]; then
+            echo ""
+            echo "--- Finding :latest version ---"
+
+            LATEST=$(echo "$ALL_VERSIONS" | jq -c '.[] | select(.tags[] == "latest")' | head -1)
+
+            if [ -z "$LATEST" ]; then
+              echo "ERROR: No ':latest' tag found — nothing to protect. Aborting."
+              exit 1
+            fi
+
+            LATEST_ID=$(echo "$LATEST" | jq -r '.id')
+            LATEST_DIGEST=$(echo "$LATEST" | jq -r '.name')
+            echo "  Found :latest id=${LATEST_ID} digest=${LATEST_DIGEST}"
+
+            # Collect digests referenced by :latest
+            echo ""
+            echo "--- Collecting digests referenced by ':latest' ---"
+            LATEST_REFS=$(collect_referenced_digests "latest")
+            PROTECTED_DIGESTS="${LATEST_DIGEST}"
+            if [ -n "$LATEST_REFS" ]; then
+              PROTECTED_DIGESTS="${PROTECTED_DIGESTS}"$'\n'"${LATEST_REFS}"
+              echo "$LATEST_REFS" | while IFS= read -r d; do
+                [ -n "$d" ] && echo "  ${d}"
+              done
+            fi
+            PROTECTED_DIGESTS=$(echo "$PROTECTED_DIGESTS" | sort -u | grep . || true)
+            PROTECTED_IDS="${LATEST_ID}"
+
+            # Map protected digests to version IDs
+            while IFS= read -r d; do
+              [ -z "$d" ] && continue
+              dep_id=$(echo "$ALL_VERSIONS" | jq -r --arg d "$d" '.[] | select(.name == $d) | .id')
+              if [ -n "$dep_id" ]; then
+                PROTECTED_IDS="${PROTECTED_IDS}"$'\n'"${dep_id}"
+              fi
+            done <<< "$PROTECTED_DIGESTS"
+
+            echo ""
+            echo "--- Deleting all versions except :latest and its dependencies ---"
+
+            echo "$ALL_VERSIONS" | jq -c '.[]' | while IFS= read -r version; do
+              [ -z "$version" ] && continue
+              id=$(echo "$version" | jq -r '.id')
+              digest=$(echo "$version" | jq -r '.name')
+              tags=$(echo "$version" | jq -r '.tags | join(", ")')
+
+              if echo "$PROTECTED_IDS" | grep -qxF "$id"; then
+                echo "  KEEP   id=${id} digest=${digest} tags=[${tags}] (protected by :latest)"
+              else
+                echo "  DELETE id=${id} digest=${digest} tags=[${tags}]"
+                if [ "$DRY_RUN" = "false" ]; then
+                  gh api --method DELETE "${API_BASE}/versions/${id}" && echo "    -> Deleted" || echo "    -> Failed"
+                fi
+              fi
+            done
+
+            echo ""
+            echo "=== Done ==="
+
+          # -----------------------------------------------------------
+          # MODE 3: Delete a specific tag and its exclusive references
           # -----------------------------------------------------------
           else
             echo ""
