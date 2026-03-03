@@ -23,7 +23,7 @@ This application automates the process of downloading GPX activity files from Ga
 </p>
 
 ## Features
-*   **Interactive Garmin Login (2FA/MFA supported)**: Log in to Garmin Connect directly from the Settings page in the web UI. Accounts with Two-Factor Authentication are fully supported -- enter your MFA code when prompted. No need to set Garmin credentials as environment variables. See [2FA_LOGIN.md](2FA_LOGIN.md) for details.
+*   **Interactive Garmin Login (2FA/MFA supported)**: Log in to Garmin Connect directly from the Settings page in the web UI. Accounts with Two-Factor Authentication are fully supported -- enter your MFA code when prompted. No need to set Garmin credentials as environment variables.
 *   **Automated Sync**: Runs a scheduled job daily (at 3:00 AM) to download yesterday's activities from Garmin Connect and upload them to Dawarich.
 *   **Manual Controls**: Trigger downloads and uploads manually through the web interface.
 *   **Historical Download**: A "Custom Check" feature allows downloading historical data for a specified date range, with a configurable delay to avoid rate-limiting.
