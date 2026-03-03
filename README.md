@@ -23,6 +23,7 @@ This application automates the process of downloading GPX activity files from Ga
 </p>
 
 ## Features
+*   **Interactive Garmin Login (2FA/MFA supported)**: Log in to Garmin Connect directly from the Settings page in the web UI. Accounts with Two-Factor Authentication are fully supported -- enter your MFA code when prompted. No need to set Garmin credentials as environment variables. See [2FA_LOGIN.md](2FA_LOGIN.md) for details.
 *   **Automated Sync**: Runs a scheduled job daily (at 3:00 AM) to download yesterday's activities from Garmin Connect and upload them to Dawarich.
 *   **Manual Controls**: Trigger downloads and uploads manually through the web interface.
 *   **Historical Download**: A "Custom Check" feature allows downloading historical data for a specified date range, with a configurable delay to avoid rate-limiting.
@@ -86,9 +87,9 @@ environment:
     FLASK_SECRET_KEY: "your_very_secret_flask_key_here"
     FLASK_ENV: "development"
 
-    # Garmin Connect Credentials
-    GARMIN_EMAIL: "your_garmin_email@example.com"
-    GARMIN_PASSWORD: "your_garmin_password"
+    # Garmin Connect Credentials (optional — you can log in via the Settings page instead)
+    # GARMIN_EMAIL: "your_garmin_email@example.com"
+    # GARMIN_PASSWORD: "your_garmin_password"
 
     # Dawarich Instance Details
     DAWARICH_EMAIL: "your_dawarich_email@example.com"
@@ -141,8 +142,9 @@ services:
       TZ: "America/Denver"
       FLASK_SECRET_KEY: "fgxdrftg45eg5e4gerdg"
       FLASK_ENV: "development"
-      GARMIN_EMAIL: "email@example.com"
-      GARMIN_PASSWORD: "email@example.com"
+      # Garmin credentials are optional — log in via the web UI Settings page instead (supports 2FA)
+      # GARMIN_EMAIL: "email@example.com"
+      # GARMIN_PASSWORD: "your_garmin_password"
       EXCLUDE: "['Indoor Rowing', 'Indoor Cycling']"
       DAWARICH_EMAIL: "email@example.com"
       DAWARICH_PASSWORD: "ABCDabcdd123"

@@ -576,9 +576,31 @@ def submit_location_data(gpx_path: str, source: str = "gpx") -> bool:
         import_token = import_token_element['value']
         current_app.logger.debug("submit_location_data: Step 2: Extracted import CSRF token from input field.")
 
-    direct_upload_url = soup2.find(
-        'form', {'data-controller':'direct-upload'}
-    )['data-direct-upload-url-value']
+    # Find the upload form — Dawarich renamed the Stimulus controller:
+    #   Old: data-controller="direct-upload"  data-direct-upload-url-value="..."
+    #   New: data-controller="upload"         data-upload-url-value="..."
+    upload_form = (
+        soup2.find('form', {'data-controller': 'upload'})
+        or soup2.find('form', {'data-controller': 'direct-upload'})
+    )
+    if not upload_form:
+        current_app.logger.error(
+            "submit_location_data: Step 2: Could not find upload form on import page. "
+            "Your Dawarich version may be incompatible."
+        )
+        raise RuntimeError("Could not find upload form on Dawarich import page.")
+
+    direct_upload_url = (
+        upload_form.get('data-upload-url-value')
+        or upload_form.get('data-direct-upload-url-value')
+    )
+    if not direct_upload_url:
+        current_app.logger.error(
+            "submit_location_data: Step 2: Upload form found but no direct-upload URL attribute. "
+            f"Form attributes: {list(upload_form.attrs.keys())}"
+        )
+        raise RuntimeError("Could not find direct-upload URL on Dawarich import form.")
+
     current_app.logger.info(f"submit_location_data: Step 2: Import CSRF token={import_token[:8]}…, Direct-upload URL={direct_upload_url}")
 
     # -- 3) DIRECT UPLOAD BLOB META ---------------------------------------
