@@ -43,7 +43,11 @@ jobs:
           API_BASE="/users/${OWNER_LC}/packages/container/${PACKAGE}"
 
           echo "=== Package: ${OWNER_LC}/${PACKAGE} ==="
-          echo "=== Mode: ${TAG:+DELETE TAG '${TAG}'}${TAG:-PRUNE ORPHANS} ==="
+          if [ -n "$TAG" ]; then
+            echo "=== Mode: DELETE TAG '${TAG}' ==="
+          else
+            echo "=== Mode: PRUNE ORPHANS ==="
+          fi
           echo "=== Dry run: ${DRY_RUN} ==="
           echo ""
 
@@ -63,11 +67,23 @@ jobs:
           # -----------------------------------------------------------
           # Collect all digests referenced by ALL tagged images
           # -----------------------------------------------------------
+          # Exchange github.token for a GHCR registry token
+          GHCR_TOKEN=$(curl -sf \
+            -u "${OWNER_LC}:${GH_TOKEN}" \
+            "https://ghcr.io/token?scope=repository:${OWNER_LC}/${PACKAGE}:pull" \
+            | jq -r '.token')
+
+          if [ -z "$GHCR_TOKEN" ] || [ "$GHCR_TOKEN" = "null" ]; then
+            echo "ERROR: Failed to obtain GHCR registry token"
+            exit 1
+          fi
+          echo "Registry token obtained"
+
           collect_referenced_digests() {
             local check_tag="$1"
             # Fetch the manifest for this tag and extract child digests
             curl -sf \
-              -H "Authorization: Bearer $(echo "$GH_TOKEN")" \
+              -H "Authorization: Bearer ${GHCR_TOKEN}" \
               -H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json" \
               "https://ghcr.io/v2/${OWNER_LC}/${PACKAGE}/manifests/${check_tag}" 2>/dev/null \
               | jq -r '.manifests[]?.digest // empty' 2>/dev/null || true
