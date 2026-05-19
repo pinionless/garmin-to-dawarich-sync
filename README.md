@@ -29,7 +29,7 @@ This application automates the process of downloading GPX activity files from Ga
 *   **Historical Download**: A "Custom Check" feature allows downloading historical data for a specified date range, with a configurable delay to avoid rate-limiting.
 *   **Responsive Web UI**: A clean web interface that works on both desktop and mobile devices for viewing records and managing the application.
 *   **Intelligent Downloading**: Skips activities that have already been downloaded or do not contain any GPS location data.
-*   **Robust Uploading**: Simulates browser behavior to robustly upload GPX files to Dawarich's direct upload endpoint.
+*   **Robust Uploading**: Uses Dawarich's API-key import endpoint when `DAWARICH_API_KEY` is configured (works with OIDC-only Dawarich setups), with the legacy browser upload flow as a fallback.
 *   **Connection & Version Checks**: Performs pre-flight checks for Dawarich connection, credentials, and version compatibility to prevent errors.
 *   **Persistent Database**: Uses PostgreSQL or LiteFS (SQLite) to store a record of all downloaded files and their upload status.
 *   **GeoPulse Integration**: Optionally copies downloaded GPX files to a GeoPulse-compatible directory for additional location processing.
@@ -92,9 +92,13 @@ environment:
     # GARMIN_PASSWORD: "your_garmin_password"
 
     # Dawarich Instance Details
+    DAWARICH_HOST: "https://dawarich.example.com"
+    # Recommended for Dawarich 1.3.4+ and required when Dawarich uses OIDC-only login.
+    # The API key can be found in your Dawarich account settings.
+    DAWARICH_API_KEY: "your_dawarich_api_key"
+    # Legacy browser-login fallback (only needed if you do not use DAWARICH_API_KEY)
     DAWARICH_EMAIL: "your_dawarich_email@example.com"
     DAWARICH_PASSWORD: "your_dawarich_password"
-    DAWARICH_HOST: "https://dawarich.example.com"
 
     # Garmin activity exclusion list (optional, Python list format)
     # Example: EXCLUDE: "['Virtual Ride', 'Indoor Cycling']"
@@ -146,9 +150,12 @@ services:
       # GARMIN_EMAIL: "email@example.com"
       # GARMIN_PASSWORD: "your_garmin_password"
       EXCLUDE: "['Indoor Rowing', 'Indoor Cycling']"
-      DAWARICH_EMAIL: "email@example.com"
-      DAWARICH_PASSWORD: "ABCDabcdd123"
       DAWARICH_HOST: "https://dawarich.example.com"
+      # Recommended for Dawarich 1.3.4+ and required for OIDC-only Dawarich.
+      DAWARICH_API_KEY: "your_dawarich_api_key"
+      # Legacy browser-login fallback (only needed without DAWARICH_API_KEY)
+      # DAWARICH_EMAIL: "email@example.com"
+      # DAWARICH_PASSWORD: "ABCDabcdd123"
       
       # Optional GeoPulse Integration
       # GEOPULSE_ENABLE: "true"

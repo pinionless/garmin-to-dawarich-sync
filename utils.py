@@ -99,12 +99,39 @@ def check_dawarich_connection(force_check=False):
                 flash(status_cache['message'], 'error')
             return status_cache['status']
 
-    host = current_app.config.get('DAWARICH_HOST')
+    host = (current_app.config.get('DAWARICH_HOST') or '').rstrip('/')
     user = current_app.config.get('DAWARICH_EMAIL')
     pwd = current_app.config.get('DAWARICH_PASSWORD')
+    api_key = current_app.config.get('DAWARICH_API_KEY')
 
-    if not all([host, user, pwd]):
-        msg = "Dawarich connection failed: Host, email, or password not configured."
+    if not host:
+        msg = "Dawarich connection failed: Host not configured."
+        current_app.logger.error(msg)
+        flash(msg, 'error')
+        status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
+        return False
+
+    if api_key:
+        imports_url = f'{host}/api/v1/imports'
+        try:
+            resp = requests.get(
+                imports_url,
+                params={'api_key': api_key, 'per_page': 1},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            current_app.logger.info("Dawarich API connection check successful.")
+            status_cache.update({'status': True, 'timestamp': time.time(), 'message': '', 'version': None})
+            return True
+        except requests.exceptions.RequestException as e:
+            msg = f"Dawarich API connection failed: Network or authentication error - {e}"
+            current_app.logger.error(msg)
+            flash(msg, 'error')
+            status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
+            return False
+
+    if not all([user, pwd]):
+        msg = "Dawarich connection failed: Email or password not configured. Set DAWARICH_API_KEY for OIDC/API upload."
         current_app.logger.error(msg)
         flash(msg, 'error')
         status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
@@ -516,6 +543,47 @@ def download_activities(startdate: datetime.datetime,
 
 
 
+def submit_location_data_via_api(gpx_path: str) -> bool:
+    """Upload a GPX file using Dawarich's API-key import endpoint (Dawarich 1.3.4+)."""
+    host = (current_app.config.get('DAWARICH_HOST') or '').rstrip('/')
+    api_key = current_app.config.get('DAWARICH_API_KEY')
+
+    if not host or not api_key:
+        current_app.logger.error("submit_location_data_via_api: Dawarich host or API key is not configured.")
+        return False
+
+    import_url = f'{host}/api/v1/imports'
+    filename = os.path.basename(gpx_path)
+    content_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+
+    current_app.logger.info(f"submit_location_data_via_api: Uploading {filename} to Dawarich API.")
+    with open(gpx_path, 'rb') as file_handle:
+        files = {'file': (filename, file_handle, content_type)}
+        resp = requests.post(
+            import_url,
+            params={'api_key': api_key},
+            files=files,
+            timeout=60,
+        )
+
+    if not resp.ok:
+        current_app.logger.error(
+            f"submit_location_data_via_api: API import failed: {resp.status_code} - {resp.text[:500]}"
+        )
+        return False
+
+    settings = UserSettings.query.first()
+    if settings and settings.delete_old_gpx:
+        try:
+            os.remove(gpx_path)
+            current_app.logger.info(f"submit_location_data_via_api: Deleted successfully uploaded file as per user setting: {gpx_path}")
+        except OSError as e:
+            current_app.logger.error(f"submit_location_data_via_api: Failed to delete file {gpx_path}: {e}", exc_info=True)
+
+    current_app.logger.info(f"submit_location_data_via_api: Successfully submitted {filename} to Dawarich API.")
+    return True
+
+
 def submit_location_data(gpx_path: str, source: str = "gpx") -> bool:
     """
     1) Log in and get CSRF token
@@ -529,9 +597,12 @@ def submit_location_data(gpx_path: str, source: str = "gpx") -> bool:
         current_app.logger.error("submit_location_data: Aborting due to failed Dawarich connection check.")
         return False
 
+    if current_app.config.get('DAWARICH_API_KEY'):
+        return submit_location_data_via_api(gpx_path)
+
     current_app.logger.info(f"submit_location_data: Starting import for {gpx_path}, source={source}")
     # -- 1) LOGIN ---------------------------------------------------------
-    host  = current_app.config.get('DAWARICH_HOST')
+    host  = (current_app.config.get('DAWARICH_HOST') or '').rstrip('/')
     login_url =f'{host}/users/sign_in'
 
     user = current_app.config.get('DAWARICH_EMAIL') 
