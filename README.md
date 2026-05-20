@@ -3,9 +3,10 @@
 This application automates the process of downloading GPX activity files from Garmin Connect and uploading them to a Dawarich instance.
 
 ## Tested Dawarich
-**Works with Dawarich 1.3.1**
+**Works with Dawarich 1.3.1 using legacy email/password upload and Dawarich 1.3.4+ using API-key upload.**
 - Updates to the Dawarich app might break the upload (import) process.
-- By default, the application will only work with tested versions of Dawarich. This can be changed in settings.
+- By default, the legacy browser-login upload path will only work with tested versions of Dawarich. This can be changed in settings.
+- The `DAWARICH_API_KEY` upload path uses Dawarich's `/api/v1/imports` endpoint, which requires Dawarich 1.3.4 or newer and works with OIDC-only Dawarich setups.
 
 ## Support
 ##### Here is a link in case you want to leave a tip.
@@ -115,6 +116,15 @@ environment:
     POSTGRES_DB: "your_db_name"
     POSTGRES_HOST: "db" # Often the service name in docker-compose
 ```
+
+## Dawarich Upload Modes
+
+This app can upload GPX files to Dawarich in two ways:
+
+1. **API-key upload (recommended)**: Set `DAWARICH_API_KEY`. This uses `POST /api/v1/imports`, requires Dawarich 1.3.4 or newer, and is the right option for OIDC-only Dawarich setups where `/users/sign_in` is not available.
+2. **Legacy browser-login upload**: Set `DAWARICH_EMAIL` and `DAWARICH_PASSWORD` without `DAWARICH_API_KEY`. This keeps the older form-login/direct-upload flow for older Dawarich instances that do not have the import API.
+
+If `DAWARICH_API_KEY` is configured, it takes precedence over the legacy email/password upload flow.
 
 ## Database
 - The application will automatically use a local **LiteFS (SQLite)** database located in the `/garmin` volume if PostgreSQL environment variables are not fully provided.

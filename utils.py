@@ -123,8 +123,23 @@ def check_dawarich_connection(force_check=False):
             current_app.logger.info("Dawarich API connection check successful.")
             status_cache.update({'status': True, 'timestamp': time.time(), 'message': '', 'version': None})
             return True
+        except requests.exceptions.HTTPError as e:
+            status_code = e.response.status_code if e.response is not None else None
+            if status_code == 404:
+                msg = (
+                    "Dawarich API import endpoint not found. DAWARICH_API_KEY upload requires "
+                    "Dawarich 1.3.4 or newer; use legacy email/password upload on older Dawarich versions."
+                )
+            elif status_code in (401, 403):
+                msg = "Dawarich API connection failed: invalid API key or API access denied."
+            else:
+                msg = f"Dawarich API connection failed: HTTP error - {e}"
+            current_app.logger.error(msg)
+            flash(msg, 'error')
+            status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
+            return False
         except requests.exceptions.RequestException as e:
-            msg = f"Dawarich API connection failed: Network or authentication error - {e}"
+            msg = f"Dawarich API connection failed: Network error - {e}"
             current_app.logger.error(msg)
             flash(msg, 'error')
             status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})

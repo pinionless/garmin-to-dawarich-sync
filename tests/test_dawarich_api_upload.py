@@ -20,6 +20,7 @@ class DawarichApiUploadTest(unittest.TestCase):
         app = Flask(__name__)
         app.config.update(
             TESTING=True,
+            SECRET_KEY="test-secret",
             SQLALCHEMY_DATABASE_URI=f"sqlite:///{tmp_path / 'test.db'}",
             SQLALCHEMY_TRACK_MODIFICATIONS=False,
             DAWARICH_HOST="https://dawarich.example.test/",
@@ -71,6 +72,22 @@ class DawarichApiUploadTest(unittest.TestCase):
                 timeout=10,
             )
             self.assertTrue(app.config["_DAWARICH_CONNECTION_STATUS"]["status"])
+
+    def test_check_dawarich_connection_reports_version_requirement_when_api_endpoint_is_missing(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            app = self.make_app(tmp_path)
+            response = Mock(ok=False, status_code=404, text="Not found")
+            response.raise_for_status.side_effect = utils.requests.exceptions.HTTPError(
+                "404 Client Error", response=response
+            )
+
+            with app.test_request_context(), patch("utils.requests.get", return_value=response):
+                self.assertFalse(utils.check_dawarich_connection(force_check=True))
+
+            message = app.config["_DAWARICH_CONNECTION_STATUS"]["message"]
+            self.assertIn("Dawarich 1.3.4 or newer", message)
+            self.assertIn("legacy email/password", message)
 
 
 if __name__ == "__main__":
