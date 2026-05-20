@@ -73,6 +73,35 @@ class DawarichApiUploadTest(unittest.TestCase):
             )
             self.assertTrue(app.config["_DAWARICH_CONNECTION_STATUS"]["status"])
 
+    def test_check_dawarich_connection_requires_api_key(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            app = self.make_app(tmp_path, api_key=None)
+            app.config["DAWARICH_EMAIL"] = "legacy@example.test"
+            app.config["DAWARICH_PASSWORD"] = "legacy-password"
+
+            with app.test_request_context(), patch("utils.requests.Session") as session:
+                self.assertFalse(utils.check_dawarich_connection(force_check=True))
+
+            session.assert_not_called()
+            message = app.config["_DAWARICH_CONNECTION_STATUS"]["message"]
+            self.assertIn("DAWARICH_API_KEY is required", message)
+            self.assertIn("Dawarich 1.3.4", message)
+
+    def test_submit_location_data_does_not_fall_back_to_legacy_browser_upload(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            app = self.make_app(tmp_path, api_key=None)
+            app.config["DAWARICH_EMAIL"] = "legacy@example.test"
+            app.config["DAWARICH_PASSWORD"] = "legacy-password"
+            gpx_path = tmp_path / "activity.gpx"
+            gpx_path.write_bytes(GPX_BYTES)
+
+            with app.app_context(), patch.object(utils, "check_dawarich_connection", return_value=True), patch("utils.requests.Session") as session:
+                self.assertFalse(utils.submit_location_data(str(gpx_path)))
+
+            session.assert_not_called()
+
     def test_check_dawarich_connection_reports_version_requirement_when_api_endpoint_is_missing(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
@@ -86,8 +115,8 @@ class DawarichApiUploadTest(unittest.TestCase):
                 self.assertFalse(utils.check_dawarich_connection(force_check=True))
 
             message = app.config["_DAWARICH_CONNECTION_STATUS"]["message"]
-            self.assertIn("Dawarich 1.3.4 or newer", message)
-            self.assertIn("legacy email/password", message)
+            self.assertIn("Dawarich 1.3.4", message)
+            self.assertNotIn("legacy", message.lower())
 
 
 if __name__ == "__main__":

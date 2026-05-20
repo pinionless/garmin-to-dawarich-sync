@@ -178,10 +178,7 @@
             <label for="delete_old_gpx">Delete old GPX files after upload:</label>
             <input type="checkbox" id="delete_old_gpx" name="delete_old_gpx" value="true" {% if settings.delete_old_gpx %}checked{% endif %}>
         </div>
-        <div class="form-group">
-            <label for="ignore_safe_dawarich_versions">Ignore Dawarich safe versions check:</label>
-            <input type="checkbox" id="ignore_safe_dawarich_versions" name="ignore_safe_dawarich_versions" value="true" {% if settings.ignore_safe_dawarich_versions %}checked{% endif %}>
-        </div>
+
         <div class="form-group">
             <label for="manual_check_start_date">Manual Check Start Date:</label>
             <input type="date" id="manual_check_start_date" name="manual_check_start_date" value="{{ settings.manual_check_start_date.isoformat() if settings.manual_check_start_date }}">

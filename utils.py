@@ -12,10 +12,9 @@ from garminconnect import (
     GarminConnectAuthenticationError,
     GarminConnectConnectionError,
     GarminConnectTooManyRequestsError,
+    HTTPError,
 )
-from garth.exc import GarthHTTPError
 from models import db, DownloadRecord, UserSettings
-import hashlib, base64
 import time # Added for sleep functionality
 import shutil
 
@@ -100,8 +99,6 @@ def check_dawarich_connection(force_check=False):
             return status_cache['status']
 
     host = (current_app.config.get('DAWARICH_HOST') or '').rstrip('/')
-    user = current_app.config.get('DAWARICH_EMAIL')
-    pwd = current_app.config.get('DAWARICH_PASSWORD')
     api_key = current_app.config.get('DAWARICH_API_KEY')
 
     if not host:
@@ -111,117 +108,42 @@ def check_dawarich_connection(force_check=False):
         status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
         return False
 
-    if api_key:
-        imports_url = f'{host}/api/v1/imports'
-        try:
-            resp = requests.get(
-                imports_url,
-                params={'api_key': api_key, 'per_page': 1},
-                timeout=10,
-            )
-            resp.raise_for_status()
-            current_app.logger.info("Dawarich API connection check successful.")
-            status_cache.update({'status': True, 'timestamp': time.time(), 'message': '', 'version': None})
-            return True
-        except requests.exceptions.HTTPError as e:
-            status_code = e.response.status_code if e.response is not None else None
-            if status_code == 404:
-                msg = (
-                    "Dawarich API import endpoint not found. DAWARICH_API_KEY upload requires "
-                    "Dawarich 1.3.4 or newer; use legacy email/password upload on older Dawarich versions."
-                )
-            elif status_code in (401, 403):
-                msg = "Dawarich API connection failed: invalid API key or API access denied."
-            else:
-                msg = f"Dawarich API connection failed: HTTP error - {e}"
-            current_app.logger.error(msg)
-            flash(msg, 'error')
-            status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
-            return False
-        except requests.exceptions.RequestException as e:
-            msg = f"Dawarich API connection failed: Network error - {e}"
-            current_app.logger.error(msg)
-            flash(msg, 'error')
-            status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
-            return False
-
-    if not all([user, pwd]):
-        msg = "Dawarich connection failed: Email or password not configured. Set DAWARICH_API_KEY for OIDC/API upload."
+    if not api_key:
+        msg = "Dawarich connection failed: DAWARICH_API_KEY is required for Dawarich 1.3.4 API upload."
         current_app.logger.error(msg)
         flash(msg, 'error')
         status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
         return False
 
-    login_url = f'{host}/users/sign_in'
-    sess = requests.Session()
-
+    imports_url = f'{host}/api/v1/imports'
     try:
-        page = sess.get(login_url, timeout=10)
-        page.raise_for_status()
-        soup = BeautifulSoup(page.text, 'html.parser')
-        token_element = soup.find('input', {'name': 'authenticity_token'})
-        if not token_element:
-            raise ValueError("Could not find CSRF token on Dawarich login page.")
-        token = token_element['value']
-
-        data = {
-            'user[email]': user,
-            'user[password]': pwd,
-            'authenticity_token': token
-        }
-        resp = sess.post(login_url, data=data, timeout=10)
+        resp = requests.get(
+            imports_url,
+            params={'api_key': api_key, 'per_page': 1},
+            timeout=10,
+        )
         resp.raise_for_status()
-
-        if "Invalid Email or password." in resp.text:
-            raise ValueError("Invalid Dawarich credentials.")
-
-        # --- Find Dawarich Version ---
-        soup_dashboard = BeautifulSoup(resp.text, 'html.parser')
-        version_link = soup_dashboard.find('a', href="https://github.com/Freika/dawarich/releases/latest")
-        dawarich_version = None
-        if version_link:
-            version_span = version_link.find('span')
-            if version_span:
-                dawarich_version = version_span.text.strip().rstrip(' !').strip()
-
-        settings = UserSettings.query.first()
-        if settings and settings.ignore_safe_dawarich_versions:
-            current_app.logger.warning("Dawarich safe version check is being ignored by user setting.")
-        else:
-            safe_versions = current_app.config.get('SAFE_VERSIONS', [])
-            if not dawarich_version:
-                msg = "Could not determine Dawarich version. Aborting as a precaution."
-                current_app.logger.error(msg)
-                flash(msg, 'error')
-                status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
-                return False
-
-            if dawarich_version not in safe_versions:
-                msg = f"Dawarich version {dawarich_version} is not in the list of safe versions: {safe_versions}"
-                current_app.logger.error(msg)
-                flash(msg, 'error')
-                status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': dawarich_version})
-                return False
-
-        current_app.logger.info(f"Dawarich connection check successful. Version: {dawarich_version}")
-        status_cache.update({'status': True, 'timestamp': time.time(), 'message': '', 'version': dawarich_version})
+        current_app.logger.info("Dawarich API connection check successful.")
+        status_cache.update({'status': True, 'timestamp': time.time(), 'message': '', 'version': '1.3.4+'})
         return True
-
+    except requests.exceptions.HTTPError as e:
+        status_code = e.response.status_code if e.response is not None else None
+        if status_code == 404:
+            msg = (
+                "Dawarich API import endpoint not found. DAWARICH_API_KEY upload requires "
+                "Dawarich 1.3.4 with the /api/v1/imports endpoint."
+            )
+        elif status_code in (401, 403):
+            msg = "Dawarich API connection failed: invalid API key or API access denied."
+        else:
+            msg = f"Dawarich API connection failed: HTTP error - {e}"
+        current_app.logger.error(msg)
+        flash(msg, 'error')
+        status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
+        return False
     except requests.exceptions.RequestException as e:
-        msg = f"Dawarich connection failed: Network error - {e}"
+        msg = f"Dawarich API connection failed: Network error - {e}"
         current_app.logger.error(msg)
-        flash(msg, 'error')
-        status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
-        return False
-    except ValueError as e:
-        msg = f"Dawarich connection failed: {e}"
-        current_app.logger.error(msg)
-        flash(msg, 'error')
-        status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
-        return False
-    except Exception as e:
-        msg = f"Dawarich connection failed: An unexpected error occurred - {e}"
-        current_app.logger.error(msg, exc_info=True)
         flash(msg, 'error')
         status_cache.update({'status': False, 'timestamp': time.time(), 'message': msg, 'version': None})
         return False
@@ -349,9 +271,9 @@ def garmin_interactive_login(email, password):
             }
 
         # No MFA needed — save tokens
-        gc.garth.dump(tokenstore)
+        gc.client.dump(tokenstore)
         with open(GARMIN_TOKENSTORE_B64, "w") as f:
-            f.write(gc.garth.dumps())
+            f.write(gc.client.dumps())
         current_app.logger.info("Garmin interactive login successful (no MFA).")
         return {
             "status": "success",
@@ -390,9 +312,9 @@ def garmin_complete_mfa(mfa_code):
         gc.resume_login(client_state, mfa_code)
 
         # Save tokens
-        gc.garth.dump(tokenstore)
+        gc.client.dump(tokenstore)
         with open(GARMIN_TOKENSTORE_B64, "w") as f:
-            f.write(gc.garth.dumps())
+            f.write(gc.client.dumps())
 
         # Clear MFA state
         current_app.config.pop('_GARMIN_MFA_STATE', None)
@@ -404,7 +326,7 @@ def garmin_complete_mfa(mfa_code):
             "display_name": gc.display_name or gc.full_name or "Garmin User",
         }
 
-    except GarthHTTPError as e:
+    except HTTPError as e:
         error_str = str(e)
         if "429" in error_str:
             current_app.config.pop('_GARMIN_MFA_STATE', None)
@@ -461,7 +383,7 @@ def init_garmin():
         gc = Garmin()
         gc.login(tokenstore)
         return gc
-    except (FileNotFoundError, GarthHTTPError, GarminConnectAuthenticationError):
+    except (FileNotFoundError, HTTPError, GarminConnectAuthenticationError):
         pass  # Fall through to credential login
 
     # 2. Try env-var credentials
@@ -479,9 +401,9 @@ def init_garmin():
                 "MFA is required for this Garmin account. "
                 "Please log in via the Settings page in the web UI."
             )
-        gc.garth.dump(tokenstore)
+        gc.client.dump(tokenstore)
         with open(GARMIN_TOKENSTORE_B64, "w") as f:
-            f.write(gc.garth.dumps())
+            f.write(gc.client.dumps())
         gc.login(tokenstore)
     except (RuntimeError, ValueError):
         raise
@@ -600,215 +522,13 @@ def submit_location_data_via_api(gpx_path: str) -> bool:
 
 
 def submit_location_data(gpx_path: str, source: str = "gpx") -> bool:
-    """
-    1) Log in and get CSRF token
-    2) Fetch the import form to get the direct-upload URL and import CSRF token
-    3) Direct-upload the GPX file blob metadata
-    4) Upload the actual GPX file
-    5) Submit the import form with the signed_id of the uploaded blob
-    6) Check if upload was successful
-    """
+    """Upload a GPX file to Dawarich 1.3.4 using the API-key import endpoint."""
     if not check_dawarich_connection():
         current_app.logger.error("submit_location_data: Aborting due to failed Dawarich connection check.")
         return False
 
-    if current_app.config.get('DAWARICH_API_KEY'):
-        return submit_location_data_via_api(gpx_path)
-
-    current_app.logger.info(f"submit_location_data: Starting import for {gpx_path}, source={source}")
-    # -- 1) LOGIN ---------------------------------------------------------
-    host  = (current_app.config.get('DAWARICH_HOST') or '').rstrip('/')
-    login_url =f'{host}/users/sign_in'
-
-    user = current_app.config.get('DAWARICH_EMAIL') 
-    pwd  = current_app.config.get('DAWARICH_PASSWORD')
-
-    sess = requests.Session()
-    # first GET login page to retrieve CSRF token
-    page = sess.get(login_url)
-    page.raise_for_status()
-    soup = BeautifulSoup(page.text, 'html.parser')
-    token = soup.find('input', {'name': 'authenticity_token'})['value']
-    current_app.logger.debug(f"submit_location_data: Step 1: Fetched login CSRF token={token[:8]}…")
-
-    # now POST credentials + token
-    data = {
-        'user[email]': user,
-        'user[password]': pwd,
-        'authenticity_token': token
-    }
-    current_app.logger.debug(f"submit_location_data: Step 1: POSTing login credentials to {login_url}")
-    resp = sess.post(login_url, data=data)
-    resp.raise_for_status()
-    current_app.logger.info(f"submit_location_data: Step 1: Login successful to {login_url}")
-    current_app.logger.debug(f"submit_location_data: Step 1: Session cookies after login: {sess.cookies.get_dict()}")
-
-    # -- 2) IMPORT FORM ---------------------------------------------------
-    form_url = f'{host}/imports/new'
-    resp = sess.get(form_url); resp.raise_for_status()
-    current_app.logger.debug(f"submit_location_data: Step 2: GET import form {form_url} status={resp.status_code}")
-    soup2 = BeautifulSoup(resp.text, 'html.parser')
-
-    # Try to get CSRF token from meta tag first, then fall back to input field
-    import_csrf_meta_tag = soup2.find('meta', {'name': 'csrf-token'})
-    if import_csrf_meta_tag and import_csrf_meta_tag.get('content'):
-        import_token = import_csrf_meta_tag['content']
-        current_app.logger.debug("submit_location_data: Step 2: Extracted import CSRF token from meta tag.")
-    else:
-        import_token_element = soup2.find('input', {'name':'authenticity_token'})
-        if not import_token_element:
-            current_app.logger.error("submit_location_data: Step 2: Could not find authenticity_token (meta or input) on import page.")
-            raise RuntimeError("Could not find authenticity_token (meta or input) on import page.")
-        import_token = import_token_element['value']
-        current_app.logger.debug("submit_location_data: Step 2: Extracted import CSRF token from input field.")
-
-    # Find the upload form — Dawarich renamed the Stimulus controller:
-    #   Old: data-controller="direct-upload"  data-direct-upload-url-value="..."
-    #   New: data-controller="upload"         data-upload-url-value="..."
-    upload_form = (
-        soup2.find('form', {'data-controller': 'upload'})
-        or soup2.find('form', {'data-controller': 'direct-upload'})
-    )
-    if not upload_form:
-        current_app.logger.error(
-            "submit_location_data: Step 2: Could not find upload form on import page. "
-            "Your Dawarich version may be incompatible."
-        )
-        raise RuntimeError("Could not find upload form on Dawarich import page.")
-
-    direct_upload_url = (
-        upload_form.get('data-upload-url-value')
-        or upload_form.get('data-direct-upload-url-value')
-    )
-    if not direct_upload_url:
-        current_app.logger.error(
-            "submit_location_data: Step 2: Upload form found but no direct-upload URL attribute. "
-            f"Form attributes: {list(upload_form.attrs.keys())}"
-        )
-        raise RuntimeError("Could not find direct-upload URL on Dawarich import form.")
-
-    current_app.logger.info(f"submit_location_data: Step 2: Import CSRF token={import_token[:8]}…, Direct-upload URL={direct_upload_url}")
-
-    # -- 3) DIRECT UPLOAD BLOB META ---------------------------------------
-    filename     = os.path.basename(gpx_path)
-    content_type = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
-
-    # load file bytes for size & checksum
-    with open(gpx_path, 'rb') as f:
-        file_data = f.read()
-    byte_size = len(file_data)
-    checksum  = base64.b64encode(hashlib.md5(file_data).digest()).decode()
-    blob_json = {
-        'blob': {
-            'filename': filename,
-            'content_type': content_type,
-            'byte_size': byte_size,
-            'checksum':  checksum
-        }
-    }
-
-    # Derive Origin and Referer from form_url for headers
-    parsed_form_url_step3 = requests.utils.urlparse(form_url)
-    origin_step3 = f"{parsed_form_url_step3.scheme}://{parsed_form_url_step3.netloc}"
-
-    headers_step3 = {
-        'Content-Type': 'application/json',
-        'Accept':       'application/json',
-        'X-CSRF-Token': import_token, # Use the token from the import form
-        'X-Requested-With': 'XMLHttpRequest',
-        'Referer': form_url,
-        'Origin': origin_step3,
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0'
-    }
-    current_app.logger.debug(f"submit_location_data: Step 3: Blob metadata payload: {blob_json}")
-    current_app.logger.debug(f"submit_location_data: Step 3: Headers for blob metadata POST: {headers_step3}")
-    current_app.logger.debug(f"submit_location_data: Step 3: POSTing blob metadata to {direct_upload_url}")
-    r = sess.post(direct_upload_url, json=blob_json, headers=headers_step3)
-    if not r.ok:
-        current_app.logger.error(
-            f"submit_location_data: Step 3: Direct-upload metadata POST failed: {r.status_code} - {r.text[:500]}"
-        )
-    r.raise_for_status()
-    info      = r.json()
-    signed_id = info['signed_id']
-    current_app.logger.info(f"submit_location_data: Step 3: Direct-upload metadata POST successful. Signed ID: {signed_id[:15]}…")
-    current_app.logger.debug(f"submit_location_data: Step 3: Full direct upload info: {info}")
-
-
-    # -- 4) UPLOAD ACTUAL FILE --------------------------------------------
-    upload_url = info['direct_upload']['url']
-    upload_headers = info['direct_upload']['headers']
-
-    current_app.logger.debug(f"submit_location_data: Step 4: Uploading file to {upload_url}")
-    current_app.logger.debug(f"submit_location_data: Step 4: Headers for file PUT: {upload_headers}")
-    with open(gpx_path, 'rb') as f:
-        r = sess.put(upload_url, data=f, headers=upload_headers)
-    if not r.ok:
-        current_app.logger.error(
-            f"submit_location_data: Step 4: File PUT failed: {r.status_code} - {r.text[:500]}"
-        )
-    r.raise_for_status()
-    current_app.logger.info(f"submit_location_data: Step 4: File PUT to {upload_url} successful.")
-
-    # -- 5) SUBMIT IMPORT -------------------------------------------------
-    import_url = f'{host}/imports'
-    form_data_step5 = [
-        ('authenticity_token', import_token), # This is the CSRF token for the form
-        ('import[source]',     source),
-        ('import[files][]',    signed_id)
-    ]
-
-    origin_step5 = origin_step3
-    
-    headers_step5 = {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Referer': form_url, 
-        'Origin': origin_step5,
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0'
-    }
-    
-    current_app.logger.debug(f"submit_location_data: Step 5: Form data for final import: {form_data_step5}")
-    current_app.logger.debug(f"submit_location_data: Step 5: Headers for final import POST: {headers_step5}")
-    current_app.logger.debug(f"submit_location_data: Step 5: POSTing final import form to {import_url}")
-    # Add files={} to ensure Content-Type is multipart/form-data, matching browser behavior for forms with enctype="multipart/form-data"
-    resp = sess.post(import_url, data=form_data_step5, headers=headers_step5, files={}) 
-    
-    if not resp.ok:
-        current_app.logger.error(
-            f"submit_location_data: Step 5: Final import POST failed: {resp.status_code} - {resp.text[:500]}"
-        )
-    resp.raise_for_status()
-    current_app.logger.info(f"submit_location_data: Step 5: Final import POST to {import_url} successful (status={resp.status_code}).")
-
-    # -- 6) CHECK IF UPLOAD WAS SUCCESSFUL --------------------------------
-    # After a successful import, we should be on the /imports page.
-    # We'll check if the filename appears in the list of imports.
-    current_app.logger.info(f"submit_location_data: Step 6: Verifying presence of {filename} on imports page.")
-    soup_imports = BeautifulSoup(resp.text, 'html.parser')
-    
-    # Find all links that point to an import detail page
-    import_links = soup_imports.find_all('a', href=lambda href: href and href.startswith('/imports/'))
-    
-    found = False
-    for link in import_links:
-        if link.text.strip() == filename:
-            found = True
-            break
-            
-    if found:
-        current_app.logger.info(f"submit_location_data: Step 6: Verification successful. Found {filename} in imports list.")
-        
-        # Check settings to see if we should delete the file
-        settings = UserSettings.query.first()
-        if settings and settings.delete_old_gpx:
-            try:
-                os.remove(gpx_path)
-                current_app.logger.info(f"submit_location_data: Deleted successfully uploaded file as per user setting: {gpx_path}")
-            except OSError as e:
-                current_app.logger.error(f"submit_location_data: Failed to delete file {gpx_path}: {e}", exc_info=True)
-
-        current_app.logger.info(f"submit_location_data: Successfully imported {filename} (blob signed_id: {signed_id[:15]}…).")
-        return True
-    else:
-        current_app.logger.error(f"submit_location_data: Step 6: Verification FAILED. Did not find {filename} in imports list after successful upload POST.")
+    if not current_app.config.get('DAWARICH_API_KEY'):
+        current_app.logger.error("submit_location_data: DAWARICH_API_KEY is required for Dawarich 1.3.4 API upload.")
         return False
+
+    return submit_location_data_via_api(gpx_path)
