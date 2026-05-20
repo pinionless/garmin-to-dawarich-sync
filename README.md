@@ -3,9 +3,10 @@
 This application automates the process of downloading GPX activity files from Garmin Connect and uploading them to a Dawarich instance.
 
 ## Tested Dawarich
-**Works with Dawarich 1.3.1**
+**Works with Dawarich 1.3.4 using API-key upload.**
 - Updates to the Dawarich app might break the upload (import) process.
-- By default, the application will only work with tested versions of Dawarich. This can be changed in settings.
+- This fork uses Dawarich's `/api/v1/imports` endpoint and requires `DAWARICH_API_KEY`.
+- Legacy browser-login/email-password upload is no longer supported.
 
 ## Support
 ##### Here is a link in case you want to leave a tip.
@@ -29,8 +30,8 @@ This application automates the process of downloading GPX activity files from Ga
 *   **Historical Download**: A "Custom Check" feature allows downloading historical data for a specified date range, with a configurable delay to avoid rate-limiting.
 *   **Responsive Web UI**: A clean web interface that works on both desktop and mobile devices for viewing records and managing the application.
 *   **Intelligent Downloading**: Skips activities that have already been downloaded or do not contain any GPS location data.
-*   **Robust Uploading**: Simulates browser behavior to robustly upload GPX files to Dawarich's direct upload endpoint.
-*   **Connection & Version Checks**: Performs pre-flight checks for Dawarich connection, credentials, and version compatibility to prevent errors.
+*   **Robust Uploading**: Uses Dawarich's API-key import endpoint (works with OIDC-only Dawarich setups).
+*   **Connection Checks**: Performs pre-flight checks for Dawarich host, API key, and import API availability.
 *   **Persistent Database**: Uses PostgreSQL or LiteFS (SQLite) to store a record of all downloaded files and their upload status.
 *   **GeoPulse Integration**: Optionally copies downloaded GPX files to a GeoPulse-compatible directory for additional location processing.
 
@@ -92,9 +93,10 @@ environment:
     # GARMIN_PASSWORD: "your_garmin_password"
 
     # Dawarich Instance Details
-    DAWARICH_EMAIL: "your_dawarich_email@example.com"
-    DAWARICH_PASSWORD: "your_dawarich_password"
     DAWARICH_HOST: "https://dawarich.example.com"
+    # Required for Dawarich 1.3.4 API upload.
+    # The API key can be found in your Dawarich account settings.
+    DAWARICH_API_KEY: "your_dawarich_api_key"
 
     # Garmin activity exclusion list (optional, Python list format)
     # Example: EXCLUDE: "['Virtual Ride', 'Indoor Cycling']"
@@ -111,6 +113,15 @@ environment:
     POSTGRES_DB: "your_db_name"
     POSTGRES_HOST: "db" # Often the service name in docker-compose
 ```
+
+## Dawarich Upload
+
+This fork supports **Dawarich 1.3.4 API-key upload only**:
+
+- Set `DAWARICH_API_KEY`.
+- Uploads use `POST /api/v1/imports`.
+- This is suitable for OIDC-only Dawarich setups where `/users/sign_in` is not available.
+- Legacy `DAWARICH_EMAIL` / `DAWARICH_PASSWORD` browser-login upload is no longer supported.
 
 ## Database
 - The application will automatically use a local **LiteFS (SQLite)** database located in the `/garmin` volume if PostgreSQL environment variables are not fully provided.
@@ -135,7 +146,7 @@ Please support [`Dawarich`](https://github.com/Freika/dawarich).
 services:
   garmin-to-dawarich-sync:
     container_name: garmin-to-dawarich-sync
-    image: ghcr.io/pinionless/garmin-to-dawarich-sync:latest
+    image: ghcr.io/frankhommers/garmin-to-dawarich-sync:latest
     volumes:
       - ./garmin-to-dawarich-sync:/garmin
     environment:
@@ -146,9 +157,9 @@ services:
       # GARMIN_EMAIL: "email@example.com"
       # GARMIN_PASSWORD: "your_garmin_password"
       EXCLUDE: "['Indoor Rowing', 'Indoor Cycling']"
-      DAWARICH_EMAIL: "email@example.com"
-      DAWARICH_PASSWORD: "ABCDabcdd123"
       DAWARICH_HOST: "https://dawarich.example.com"
+      # Required for Dawarich 1.3.4 API upload.
+      DAWARICH_API_KEY: "your_dawarich_api_key"
       
       # Optional GeoPulse Integration
       # GEOPULSE_ENABLE: "true"

@@ -6,7 +6,7 @@ python-dotenv==1.2.2
 requests==2.32.5
 Werkzeug==3.1.6
 gunicorn==25.1.0
-git+https://github.com/cyberjunky/python-garminconnect.git@edcf79f776f9e24ee780e48a2f623b33ecfbfc5f
+git+https://github.com/cyberjunky/python-garminconnect.git@v0.3.4
 bs4==0.0.2
 APScheduler==3.11.2
 lxml==6.0.2
